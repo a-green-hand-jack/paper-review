@@ -13,6 +13,11 @@
 .mcp.json
 AGENTS.md
 
+# oh-my-claudecode runtime/operational state (session state, plans, logs) —
+# .omc/skills/** would be the intentional committable exception if it existed
+.omc/
+!.omc/skills/
+
 # Local private review trails and Python bytecode
 /osp-trails/
 __pycache__/
