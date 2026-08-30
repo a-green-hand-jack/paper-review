@@ -77,3 +77,24 @@ are uploaded.
 - The OSP onboarding phase may still ask for interactive confirmation because
   that is part of the existing OSP command contract. If unattended execution
   stops there, the trail contains the log and workspace for inspection.
+
+## Version Comparison
+
+For the erdos973 sanity check, place the three PDFs under `papers/` and run:
+
+```bash
+python3 tools/osp_compare.py \
+  --v1 papers/erdos973/v1.pdf \
+  --v2 papers/erdos973/v2.pdf \
+  --v3 papers/erdos973/v3.pdf \
+  --venue arxiv \
+  --llm openai/gpt-5.6-sol \
+  --variant medium \
+  --harness opencode \
+  --trail-repo Jack-Jieke-Wu/osp-trails
+```
+
+The comparison command reviews all three versions in parallel with identical
+settings, then writes `comparison.md` and one copy of each final review under
+`osp-trails/erdos973-comparison/<timestamp>/`. The report records the expected
+ordering `v1 < v2 < v3` and includes v1-to-v2 and v2-to-v3 diffs.
