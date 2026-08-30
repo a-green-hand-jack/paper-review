@@ -46,6 +46,7 @@ def main() -> int:
     parser.add_argument("--variant", default="medium")
     parser.add_argument("--harness", default="opencode")
     parser.add_argument("--trail-repo")
+    parser.add_argument("--reuse", action="store_true", help="compare the latest existing trails without rerunning reviews")
     args = parser.parse_args()
     versions = [("v1", ROOT / args.v1), ("v2", ROOT / args.v2), ("v3", ROOT / args.v3)]
     missing = [str(path) for _, path in versions if not path.is_file()]
@@ -54,15 +55,22 @@ def main() -> int:
 
     trails: dict[str, Path] = {}
     failures = []
-    with ThreadPoolExecutor(max_workers=3) as executor:
-        futures = {executor.submit(review_version, path, args): label for label, path in versions}
-        for future in as_completed(futures):
-            label = futures[future]
-            _, code, value = future.result()
-            if code:
-                failures.append(f"{label}: {value}")
-            else:
-                trails[label] = Path(value)
+    if args.reuse:
+        for label, path in versions:
+            try:
+                trails[label] = latest_trail(path)
+            except FileNotFoundError as error:
+                failures.append(f"{label}: {error}")
+    else:
+        with ThreadPoolExecutor(max_workers=3) as executor:
+            futures = {executor.submit(review_version, path, args): label for label, path in versions}
+            for future in as_completed(futures):
+                label = futures[future]
+                _, code, value = future.result()
+                if code:
+                    failures.append(f"{label}: {value}")
+                else:
+                    trails[label] = Path(value)
     if failures:
         print("\n".join(failures), file=sys.stderr)
         return 1
