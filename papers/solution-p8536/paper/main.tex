@@ -1,0 +1,544 @@
+%!TEX program = pdflatex
+% Mathematics article -- amsart, the neutral class of the subject. Drafting
+% here and converting on acceptance costs nothing, because a journal class
+% changes the front matter and the page layout and leaves the body alone.
+\documentclass[11pt,reqno]{amsart}
+
+% amsart's own page is set for the AMS printed page and reads narrow on
+% screen; a journal class resets it at submission.
+\usepackage[margin=1in]{geometry}
+
+% amsart already loads amsmath, amsthm and amsfonts.
+\usepackage{amssymb,mathtools}
+\usepackage{graphicx}
+\usepackage{bm}
+\usepackage{xcolor}
+% Sorts and compresses each multiple citation, so \cite{c,a,b} prints as
+% [1--3] rather than in the order the keys were typed.
+\usepackage{cite}
+\usepackage{hyperref}
+% Links are coloured rather than boxed: the default frames print as
+% rectangles around every citation and cross-reference.
+\hypersetup{colorlinks=true,
+            linkcolor=blue!55!black,
+            citecolor=blue!55!black,
+            urlcolor=blue!55!black}
+\usepackage[capitalize,nameinlink]{cleveref}
+
+% One shared counter, so a Lemma 2.3 and a Theorem 2.4 never collide.
+\theoremstyle{plain}
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{conjecture}[theorem]{Conjecture}
+
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{example}[theorem]{Example}
+
+\theoremstyle{remark}
+\newtheorem{remark}[theorem]{Remark}
+
+% amsart numbers equations straight through; section numbering matches the
+% theorem counter and survives inserting a section.
+\numberwithin{equation}{section}
+
+\title{Automatic Moment Control for Self-Consistent Oscillator Branches}
+
+\author{Zhiyuan Yao}
+\address{Lanzhou Center for Theoretical Physics, Key Laboratory of Theoretical
+  Physics of Gansu Province, Key Laboratory of Quantum Theory and Applications
+  of MoE, Gansu Provincial Research Center for Basic Disciplines of Quantum
+  Physics, Lanzhou University, Lanzhou 730000, China}
+\email{yaozy@lzu.edu.cn}
+
+\date{\today}
+
+% AMS journals require a 2020 Mathematics Subject Classification, primary
+% first; keywords are optional and printed with it.
+% \subjclass[2020]{Primary 00A00; Secondary 00B00}
+% \keywords{KEYWORDS}
+
+\begin{document}
+
+% amsart typesets the abstract from the title block, so it is
+% declared inside the document and before that block.
+\begin{abstract}
+For the finite-dimensional self-consistently renormalized oscillator of
+Baez and Zhou, local uniqueness was stated under a bounded interaction-moment
+hypothesis.  We prove that this hypothesis follows from norm continuity of
+the ground-state branch.  State-relative Wick polynomials form a formal
+multivariate Appell family.  If a norm-convergent sequence has an escaping
+top moment, total-variation concentration makes all lower moments
+subhomogeneous, and changing the reference state forces the Wick expectation
+in the limit state to tend to $-\infty$.  Ground-state minimality supplies an
+opposing uniform lower bound, including at zero coupling through the free
+vacuum.  Thus the top moment is bounded on every compact coupling interval.
+The cone inverse theorem then yields a uniform neighborhood on which every
+shorter closed interval carries exactly one norm-continuous nonnegative
+Schwartz ground-state branch, without an a priori moment bound.
+\end{abstract}
+
+\maketitle
+
+\section{Introduction}
+
+Ordinary normal ordering originates in Wick's contraction formula
+\cite{Wick_1950te}; Gaussian Wick polynomials and constructive field-theory
+implementations are treated, from complementary viewpoints, in
+\cite{Janson_Book,Glimm_Book,Simon_Book,Simon_1972hs}.  The products in this
+paper are different: their reference state need not be Gaussian, and their
+centering and commutator axioms make them a state-relative formal Appell
+family.
+
+This state-relative construction grew out of Segal's weak-process calculus
+and his construction of nonlinear local quantum processes
+\cite{Segal_1969nf,Segal_1970nf,Segal_1970co,Segal_1971co}; a broader account
+is given by Baez, Segal, and Zhou \cite{Baez_Book}.  Friedman isolated the
+corresponding renormalized oscillator equation and its translation
+obstruction \cite{Friedman_1973ro}.  Baez and Zhou then formulated
+finite-dimensional self-consistent Wick ordering as a nonlinear ground-state
+problem and proved a local branch theorem for coercive polynomial
+interactions \cite{BaezZhou1992}.
+
+A self-consistent ground-state equation, in which the operator depends on the
+state it is meant to produce, is the setting of Hartree-type problems, and the
+uniqueness of such ground states has its own literature, and in it the
+answers are conditional: Lenzmann settled the pseudo-relativistic Hartree
+equation for ground states of sufficiently small mass, and there for all but
+countably many values of it \cite{Lenzmann_2009uo}, while Griesemer and
+Hantsch settled the Hartree--Fock ground state of a closed-shell atom whose
+nuclear charge is large enough relative to its electron number
+\cite{Griesemer_2011us}; the question remains active for nonlinear Hartree
+equations \cite{Luo_2018uo}.  What distinguishes the present problem
+from all of these is that the nonlinearity enters through the Wick ordering
+rather than through a convolution, so the interaction moment that has to be
+controlled is the one the ordering itself produces.
+
+The analytic-family and self-adjoint Schr\"odinger background is supplied by
+standard perturbation and operator theory
+\cite{Kato_Book,ReedSimonII,Simon_1970cc}.  Baez and Zhou's uniqueness
+argument assumes that the interaction moment remains bounded along the
+branch, and they record the status of that assumption themselves: they call
+it a technical condition and ask whether it can be omitted, while noting that
+continuity on the closed interval cannot be, since uniqueness already fails
+on a half-open one \cite{BaezZhou1992}.  This paper answers that
+question.  Since norm convergence alone does not normally control unbounded
+polynomial observables, the answer uses the self-consistent variational
+structure rather than a compactness slogan.
+
+The mechanism is a sign contradiction.  Formal Appell calculus identifies
+the leading behavior of a Wick polynomial when its reference state develops
+an escaping top moment.  Total-variation convergence of position laws makes
+all lower-moment contributions negligible, leaving a negative coercive term.
+The same expectation, evaluated in a fixed comparison state, is bounded
+below by ground-state minimality.  This also handles sequences of couplings
+approaching zero, where the free vacuum is the comparison state.
+
+\begin{theorem}\label{thm:moment-control}
+Let
+\[
+H_0=\frac12\sum_{j=1}^n\omega_j(p_j^2+q_j^2-1),\qquad \omega_j>0,
+\]
+on $L^2(\mathbb R^n)$, and let $P$ be a real polynomial of even degree
+$N$ satisfying $P(x)\ge\varepsilon|x|^N-k$ for some
+$\varepsilon,k>0$.  There is $\Lambda>0$ such that, for every
+$0<\lambda_0\le\Lambda$, exactly one normalized nonnegative
+Schwartz-valued norm-continuous map
+$u:[0,\lambda_0]\to L^2(\mathbb R^n)$ starts at the free vacuum and has
+$u(\lambda)$ as the ground state of the self-adjoint closure of
+\[
+H_0+\lambda:P(q):_{u(\lambda)}.
+\]
+In particular, no a priori bound on
+$\langle u(\lambda),P(q)u(\lambda)\rangle$ is required.
+\end{theorem}
+
+\section{State-relative Wick polynomials as a formal Appell family}
+\label{sec:appell}
+
+For a normalized Schwartz vector $u$ write
+\begin{equation}
+  \label{eq:moments}
+  \mu_\alpha(u)=\langle u,q^\alpha u\rangle,
+  \qquad
+  A_\alpha^u(q)=\,:q^\alpha:_u .
+\end{equation}
+The defining expectation and commutator axioms for state-relative
+renormalized products \cite{BaezZhou1992} are
+\begin{equation}
+  \label{eq:axioms}
+  A_0^u=1,
+  \qquad
+  \langle u,A_\alpha^u(q)u\rangle=0\ \ (|\alpha|>0),
+  \qquad
+  \partial_{q_j}A_\alpha^u=\alpha_jA_{\alpha-e_j}^u .
+\end{equation}
+
+\begin{proposition}
+  \label{prop:generating}
+  Let
+  \begin{equation}
+    \label{eq:series}
+    \mathcal A_u(t,q)=\sum_{\alpha\ge0}A_\alpha^u(q)\frac{t^\alpha}{\alpha!},
+    \qquad
+    M_u(t)=\sum_{\alpha\ge0}\mu_\alpha(u)\frac{t^\alpha}{\alpha!}
+  \end{equation}
+  as formal power series. Then
+  \begin{equation}
+    \label{eq:appell}
+    \mathcal A_u(t,q)=\frac{e^{t\cdot q}}{M_u(t)} .
+  \end{equation}
+\end{proposition}
+
+\begin{proof}
+  The third axiom in \eqref{eq:axioms} gives
+  $\partial_{q_j}\mathcal A_u=t_j\mathcal A_u$, so
+  $\mathcal A_u(t,q)=e^{t\cdot q}C_u(t)$ for a series $C_u$ not involving
+  $q$. Taking the $u$-expectation of \eqref{eq:series} coefficientwise and
+  using the second axiom gives $M_u(t)C_u(t)=1$; since $M_u(0)=1$, the
+  formal reciprocal exists and is unique.
+\end{proof}
+
+No analytic moment-generating function is asserted or needed: every
+identity here is an identity of formal series, and each coefficient is a
+finite algebraic expression in finitely many moments.
+
+\begin{proposition}[Change of reference state]
+  \label{prop:change}
+  Let $v$ be another normalized Schwartz vector and put
+  $r_\alpha(v,u)=\langle v,A_\alpha^u(q)v\rangle$. Then
+  \begin{equation}
+    \label{eq:change}
+    \sum_\alpha r_\alpha(v,u)\frac{t^\alpha}{\alpha!}
+    =\frac{M_v(t)}{M_u(t)},
+  \end{equation}
+  equivalently
+  \begin{equation}
+    \label{eq:recurrence}
+    r_\alpha(v,u)=\mu_\alpha(v)-\mu_\alpha(u)
+      -\sum_{\substack{0<\beta\le\alpha\\ \beta\ne\alpha}}
+        \binom{\alpha}{\beta}\mu_\beta(u)\,r_{\alpha-\beta}(v,u).
+  \end{equation}
+\end{proposition}
+
+\begin{proof}
+  Take the $v$-expectation of \eqref{eq:appell} coefficientwise, which gives
+  \eqref{eq:change}; equating coefficients in
+  $M_u(t)\sum_\alpha r_\alpha t^\alpha/\alpha!=M_v(t)$ gives
+  \eqref{eq:recurrence}.
+\end{proof}
+
+\section{Concentration under top-moment escape}
+\label{sec:concentration}
+
+\begin{lemma}
+  \label{lem:measure}
+  Let probability measures $\nu_j\to\nu$ in total variation and suppose
+  $M_j=\int|x|^N\,d\nu_j\to\infty$. Then for every $0<r<N$,
+  \begin{equation}
+    \label{eq:lower-moments}
+    \int|x|^r\,d\nu_j=o\bigl(M_j^{r/N}\bigr).
+  \end{equation}
+\end{lemma}
+
+\begin{proof}
+  Put $\theta=r/N$. For any $R>0$, Hölder's inequality on the tail gives
+  \begin{equation*}
+    \int|x|^r\,d\nu_j\le R^r+M_j^{\theta}\,\nu_j(|x|>R)^{1-\theta}.
+  \end{equation*}
+  Dividing by $M_j^{\theta}$ and taking the upper limit, total-variation
+  convergence gives
+  \begin{equation*}
+    \limsup_{j\to\infty}\frac{\int|x|^r\,d\nu_j}{M_j^{r/N}}
+    \le\nu(|x|>R)^{1-r/N}.
+  \end{equation*}
+  Letting $R\to\infty$ makes the right side vanish.
+\end{proof}
+
+\begin{lemma}
+  \label{lem:tv}
+  Let normalized $u_j\to v$ in $L^2(\mathbb R^n)$ and suppose
+  $M_j=\langle u_j,|q|^Nu_j\rangle\to\infty$. Then the position laws of
+  $u_j$ converge to that of $v$ in total variation, and
+  \begin{equation}
+    \label{eq:mu-small}
+    \mu_\alpha(u_j)=o\bigl(M_j^{|\alpha|/N}\bigr)
+    \qquad(0<|\alpha|<N).
+  \end{equation}
+\end{lemma}
+
+\begin{proof}
+  The Cauchy--Schwarz inequality gives
+  \begin{equation}
+    \label{eq:tv-bound}
+    \int\bigl||u_j|^2-|v|^2\bigr|
+    \le\lVert u_j-v\rVert_2\,\lVert u_j+v\rVert_2
+    \le2\lVert u_j-v\rVert_2\longrightarrow0,
+  \end{equation}
+  which is total-variation convergence of the position laws.
+  \Cref{lem:measure} together with $|x^\alpha|\le|x|^{|\alpha|}$ then gives
+  \eqref{eq:mu-small}.
+\end{proof}
+
+\section{A coercive negative change-of-state asymptotic}
+\label{sec:coercive}
+
+\begin{lemma}
+  \label{lem:r-asymptotics}
+  Fix a normalized Schwartz vector $v$ and let normalized Schwartz vectors
+  $u_j\to v$ in norm satisfy $M_j\to\infty$. Writing
+  $r_\alpha^{(j)}=r_\alpha(v,u_j)$,
+  \begin{equation}
+    \label{eq:r-small}
+    r_\alpha^{(j)}=o\bigl(M_j^{|\alpha|/N}\bigr)
+    \quad(0<|\alpha|<N),
+    \qquad
+    r_\alpha^{(j)}=-\mu_\alpha(u_j)+o(M_j)
+    \quad(|\alpha|=N).
+  \end{equation}
+\end{lemma}
+
+\begin{proof}
+  The moments of $v$ are fixed, so for every $0<|\gamma|<N$ we also have
+  $\mu_\gamma(v)=o(M_j^{|\gamma|/N})$. Induct on $|\alpha|$ in
+  \eqref{eq:recurrence} using \eqref{eq:mu-small}: each term of the sum is a
+  product of two quantities whose little-$o$ weights add to $|\alpha|$, which
+  gives the first assertion. At total degree $N$ the same recurrence leaves
+  $-\mu_\alpha(u_j)$ as the only contribution of top weight, all other terms
+  being $o(M_j)$.
+\end{proof}
+
+\begin{proposition}
+  \label{prop:to-minus-infinity}
+  Under the hypotheses of \Cref{lem:r-asymptotics},
+  \begin{equation}
+    \label{eq:blowdown}
+    \langle v,:P(q):_{u_j}v\rangle\ \le\ -\varepsilon M_j+o(M_j)
+    \ \longrightarrow\ -\infty .
+  \end{equation}
+\end{proposition}
+
+\begin{proof}
+  Write $P=P_N+P_{<N}$ with $P_N$ homogeneous of degree $N$. By linearity of
+  the renormalization, \eqref{eq:r-small} gives
+  \begin{equation}
+    \label{eq:leading}
+    \langle v,:P(q):_{u_j}v\rangle
+    =-\langle u_j,P_N(q)u_j\rangle+o(M_j).
+  \end{equation}
+  Evaluating the coercivity hypothesis $P(x)\ge\varepsilon|x|^N-k$ at $tx$,
+  dividing by $t^N$ and letting $t\to\infty$ gives
+  $P_N(x)\ge\varepsilon|x|^N$, so
+  $\langle u_j,P_N(q)u_j\rangle\ge\varepsilon M_j$.
+\end{proof}
+
+\section{The opposing ground-state bound}
+\label{sec:opposing}
+
+\begin{lemma}
+  \label{lem:lower}
+  Let $u$ be a normalized Schwartz ground state of
+  $H_u=H_0+\lambda:P(q):_u$ with $\lambda>0$. Then for every normalized
+  Schwartz vector $v$,
+  \begin{equation}
+    \label{eq:lower-bound}
+    \langle v,:P(q):_u v\rangle
+    \ \ge\ P(0)-\frac{\langle v,H_0v\rangle}{\lambda},
+  \end{equation}
+  and for the free vacuum $u_0$, uniformly in $\lambda$,
+  \begin{equation}
+    \label{eq:vacuum-bound}
+    \langle u_0,:P(q):_u u_0\rangle\ \ge\ P(0).
+  \end{equation}
+\end{lemma}
+
+\begin{proof}
+  The expectation normalization in \eqref{eq:axioms}, including
+  $:1:_u=1$, gives $\langle u,:P(q):_u u\rangle=P(0)$, so the ground energy
+  satisfies
+  $E_u=\langle u,H_0u\rangle+\lambda P(0)\ge\lambda P(0)$ because
+  $H_0\ge0$. Ground-state minimality against $v$ gives
+  $E_u\le\langle v,H_0v\rangle+\lambda\langle v,:P(q):_u v\rangle$, and
+  combining the two yields \eqref{eq:lower-bound}. Taking $v=u_0$ and using
+  $\langle u_0,H_0u_0\rangle=0$ gives \eqref{eq:vacuum-bound}, in which
+  $\lambda$ no longer appears.
+\end{proof}
+
+The two preceding sections now point in opposite directions, and that is the
+whole mechanism: \Cref{prop:to-minus-infinity} sends the same expectation to
+$-\infty$ whenever the top moment escapes, while \Cref{lem:lower} holds it
+above a fixed number.
+
+\section{Automatic boundedness of the omitted moment}
+\label{sec:automatic}
+
+\begin{proposition}
+  \label{prop:bounded}
+  Let $u:[0,L]\to L^2(\mathbb R^n)$ be any normalized nonnegative
+  Schwartz-valued norm-continuous self-consistent branch on a compact
+  coupling interval. Then
+  \begin{equation}
+    \label{eq:top-bounded}
+    \sup_{0\le\lambda\le L}\langle u(\lambda),|q|^Nu(\lambda)\rangle<\infty,
+  \end{equation}
+  and consequently
+  \begin{equation}
+    \label{eq:P-bounded}
+    \sup_{0\le\lambda\le L}
+      \bigl|\langle u(\lambda),P(q)u(\lambda)\rangle\bigr|<\infty .
+  \end{equation}
+\end{proposition}
+
+\begin{proof}
+  Suppose the radial top moment were unbounded, so that there are
+  $\lambda_j\in[0,L]$ with
+  $M_j=\langle u(\lambda_j),|q|^Nu(\lambda_j)\rangle\to\infty$. Passing to a
+  subsequence, $\lambda_j\to\lambda_*$ by compactness, and norm continuity
+  gives $u_j:=u(\lambda_j)\to v:=u(\lambda_*)$ in $L^2$. The values
+  $\lambda_j=0$ cannot witness escape, since $u(0)$ is a fixed vector, so we
+  may take $\lambda_j>0$. By \Cref{prop:to-minus-infinity},
+  \begin{equation}
+    \label{eq:Wj}
+    W_j:=\langle v,:P(q):_{u_j}v\rangle\longrightarrow-\infty .
+  \end{equation}
+
+  If $\lambda_*>0$ then eventually $\lambda_j\ge\lambda_*/2$, and
+  \eqref{eq:lower-bound} with the fixed test vector $v$ gives
+  $W_j\ge P(0)-2\langle v,H_0v\rangle/\lambda_*$, contradicting
+  \eqref{eq:Wj}. If $\lambda_*=0$ then continuity and uniqueness of the
+  normalized nonnegative free ground state give $v=u(0)=u_0$, and
+  \eqref{eq:vacuum-bound} gives $W_j\ge P(0)$, again contradicting
+  \eqref{eq:Wj}. This proves \eqref{eq:top-bounded}, and
+  \eqref{eq:P-bounded} follows from $|P(x)|\le C_P(1+|x|^N)$.
+\end{proof}
+
+\section{Uniform uniqueness on every sufficiently short interval}
+\label{sec:uniqueness}
+
+We use the finite-dimensional cone inverse construction of Baez and Zhou
+\cite[Theorem 1 and Lemmas 8--9]{BaezZhou1992}, keeping track
+of the interval quantifier.
+
+Let $\mathcal P_N$ be the finite-dimensional space of real polynomials of
+degree at most $N$, and let $\mathcal C_+\subset\mathcal P_N$ consist of
+those whose degree-$N$ homogeneous form is strictly positive on the unit
+sphere; this is an open convex cone contained in the cone of polynomials
+bounded below. For $Q\in\mathcal C_+$ let $v(Q)$ be the normalized
+nonnegative ground state of $H_0+Q(q)$ and define $T(Q)$ by
+\begin{equation}
+  \label{eq:T}
+  Q(q)=\,:T(Q)(q):_{v(Q)} .
+\end{equation}
+The cited source proves that $T$ is analytic on $\mathcal C_+$ and that
+$T(Q)\to0$ and $dT(Q)\to I$ as $Q\to0$ within the cone, and its cone inverse
+lemma supplies $\Lambda>0$ and a continuous curve
+\begin{equation}
+  \label{eq:curve}
+  y:[0,\Lambda]\to\mathcal C_+\cup\{0\},
+  \qquad
+  T(y(\lambda))=\lambda P,
+  \qquad
+  y(0)=0 .
+\end{equation}
+That lemma's uniqueness argument applies verbatim on every restricted
+interval $[0,L]$ with $0<L\le\Lambda$: near zero the contraction estimate
+forces any continuous solution of \eqref{eq:curve} to equal $y$, and if
+equality first failed later, local invertibility of $T$ at the common
+first-disagreement point would give a contradiction. So $y|_{[0,L]}$ is the
+unique continuous cone-valued solution on each such interval.
+
+\begin{lemma}
+  \label{lem:Qw-continuous}
+  Fix $0<L\le\Lambda$ and let $w:[0,L]\to L^2(\mathbb R^n)$ be any branch
+  allowed in \Cref{thm:moment-control}. Set
+  \begin{equation}
+    \label{eq:Qw}
+    Q_w(0)=0,
+    \qquad
+    Q_w(\lambda)=\lambda:P(q):_{w(\lambda)}\quad(\lambda>0).
+  \end{equation}
+  Then $Q_w$ takes values in $\mathcal C_+\cup\{0\}$, is continuous
+  coefficientwise on $[0,L]$ including at $\lambda=0$, and satisfies
+  $T(Q_w(\lambda))=\lambda P$.
+\end{lemma}
+
+\begin{proof}
+  The leading form of $Q_w(\lambda)$ is $\lambda P_N$, so
+  $Q_w(\lambda)\in\mathcal C_+$ for $\lambda>0$, and self-consistency with
+  \eqref{eq:T} gives $w(\lambda)=v(Q_w(\lambda))$ and
+  $T(Q_w(\lambda))=\lambda P$.
+
+  For continuity, write
+  $B=\sup_{0\le\lambda\le L}\langle w(\lambda),|q|^Nw(\lambda)\rangle$, which
+  is finite by \Cref{prop:bounded}. Norm continuity gives total-variation
+  continuity of the position laws by \eqref{eq:tv-bound}, and for
+  $0\le r<N$ the uniform tail estimate
+  \begin{equation}
+    \label{eq:tail}
+    \int_{|x|>R}|x|^r|w(\lambda,x)|^2\,dx\ \le\ R^{r-N}B
+  \end{equation}
+  holds. Truncating at $R$ and letting $R\to\infty$ shows every moment of
+  total degree below $N$ is continuous in $\lambda$. By
+  \eqref{eq:recurrence}, every nonconstant coefficient of
+  $:P:_{w(\lambda)}$ depends only on moments of total degree at most $N-1$,
+  so the nonconstant part $Q_w^{\mathrm{nc}}$ is continuous, including at
+  zero.
+
+  For the constant coefficient $c_w$, adding a scalar to a potential changes
+  neither its ground state nor any positive-degree renormalized product, so
+  $T(R+c)=T(R)+c$. With $T(Q_w(\lambda))=\lambda P$ this gives
+  \begin{equation}
+    \label{eq:cw}
+    c_w(\lambda)=\lambda P(0)-\bigl[T(Q_w^{\mathrm{nc}}(\lambda))\bigr]_0,
+  \end{equation}
+  where $[\,\cdot\,]_0$ is the constant coefficient. Continuity of $T$ on the
+  cone, together with $T(Q)\to0$ as $Q\to0$, makes $c_w$ continuous on
+  $[0,L]$.
+\end{proof}
+
+\begin{proof}[Proof of \Cref{thm:moment-control}]
+  Let $\Lambda$ be as in \eqref{eq:curve} and fix $0<\lambda_0\le\Lambda$.
+  Existence of a branch on $[0,\lambda_0]$ follows by restricting
+  $y$ and setting $u(\lambda)=v(y(\lambda))$.
+
+  For uniqueness, let $w$ be any branch allowed by the statement. By
+  \Cref{lem:Qw-continuous}, $Q_w$ is a continuous cone-valued solution of
+  \eqref{eq:curve} on $[0,\lambda_0]$, so restricted-interval cone
+  uniqueness gives $Q_w=y|_{[0,\lambda_0]}$ and hence
+  $w(\lambda)=v(y(\lambda))$ for every $\lambda$.
+
+  No bound on $\langle w(\lambda),P(q)w(\lambda)\rangle$ was assumed at any
+  point: the one used in \Cref{lem:Qw-continuous} was supplied by
+  \Cref{prop:bounded} from norm continuity and self-consistency alone.
+\end{proof}
+
+\section{Conclusion}
+
+Norm continuity, coercivity, and ground-state minimality together prevent
+escape of the interaction moment.  The conclusion is local in coupling and
+finite dimensional; it neither supplies maximal continuation nor removes
+continuity at the free-vacuum endpoint.  Within that boundary, the formerly
+assumed moment condition is redundant.
+
+\section*{Acknowledgments}
+
+Z.\ Y.\ acknowledges support from the Strategic Priority Research Program of the
+Chinese Academy of Sciences under Grant No.~XDB1680102. Z.\ Y.\ also
+acknowledges support by National Natural Science Foundation of China (Grant
+No.~12247101). We also acknowledge Gewu Intelligence Lab for providing the
+collaborative research environment in which this project was developed.
+
+OpenAI GPT-5.6 Sol was used substantively in this work: in solving the
+problem, including the formulation of arguments and the derivation of
+intermediate steps, and in drafting and revising the manuscript. The
+authors specified the problem, guided the approach to be taken, checked
+every argument and result it produced, and take full responsibility for
+the content of this manuscript.
+
+% Numbers the reference list in order of first citation, so [1] is the first
+% work the text cites.
+\bibliographystyle{unsrt}
+\bibliography{references,unverified}
+\end{document}

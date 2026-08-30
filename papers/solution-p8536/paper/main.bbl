@@ -1,0 +1,94 @@
+\begin{thebibliography}{10}
+
+\bibitem{Wick_1950te}
+G.~C. Wick.
+\newblock The evaluation of the collision matrix.
+\newblock {\em Physical Review}, 80(2):268–272, October 1950.
+
+\bibitem{Janson_Book}
+Svante Janson.
+\newblock {\em Gaussian Hilbert Spaces}.
+\newblock Cambridge University Press, 1997.
+
+\bibitem{Glimm_Book}
+James Glimm and Arthur Jaffe.
+\newblock {\em Quantum Physics}.
+\newblock Springer New York, 1987.
+
+\bibitem{Simon_Book}
+Barry Simon.
+\newblock {\em Functional Integration and Quantum Physics}.
+\newblock American Mathematical Society, December 2004.
+
+\bibitem{Simon_1972hs}
+Barry Simon and Raphael Høegh-Krohn.
+\newblock Hypercontractive semigroups and two dimensional self-coupled bose fields.
+\newblock {\em Journal of Functional Analysis}, 9(2):121–180, February 1972.
+
+\bibitem{Segal_1969nf}
+Irving Segal.
+\newblock Nonlinear functions of weak processes. {I}.
+\newblock {\em Journal of Functional Analysis}, 4(3):404--456, December 1969.
+
+\bibitem{Segal_1970nf}
+Irving Segal.
+\newblock Nonlinear functions of weak processes. {II}.
+\newblock {\em Journal of Functional Analysis}, 6(1):29--75, August 1970.
+
+\bibitem{Segal_1970co}
+Irving Segal.
+\newblock Construction of {Non-Linear} local quantum processes: I.
+\newblock {\em Annals of Mathematics}, 92(3):462--481, November 1970.
+
+\bibitem{Segal_1971co}
+Irving Segal.
+\newblock Construction of non-linear local quantum processes. {II}.
+\newblock {\em Inventiones Mathematicae}, 14(3):211--241, September 1971.
+
+\bibitem{Baez_Book}
+John~C. Baez, Irving~E. Segal, and Zhengfang Zhou.
+\newblock {\em Introduction to Algebraic and Constructive Quantum Field Theory}.
+\newblock Princeton University Press, December 1992.
+
+\bibitem{Friedman_1973ro}
+Charles~N. Friedman.
+\newblock Renormalized oscillator equations.
+\newblock {\em Journal of Mathematical Physics}, 14(10):1378--1380, October 1973.
+
+\bibitem{BaezZhou1992}
+John~C Baez and Zhengfang Zhou.
+\newblock Renormalized oscillator hamiltonians.
+\newblock {\em Advances in Mathematics}, 92(1):106–127, March 1992.
+
+\bibitem{Lenzmann_2009uo}
+Enno Lenzmann.
+\newblock Uniqueness of ground states for pseudorelativistic hartree equations.
+\newblock {\em Analysis \& PDE}, 2(1):1–27, February 2009.
+
+\bibitem{Griesemer_2011us}
+Marcel Griesemer and Fabian Hantsch.
+\newblock Unique solutions to {Hartree–Fock} equations for closed shell atoms.
+\newblock {\em Archive for Rational Mechanics and Analysis}, 203(3):883–900, 2012.
+
+\bibitem{Luo_2018uo}
+Yong Luo.
+\newblock Uniqueness of ground states for nonlinear hartree equations.
+\newblock {\em Journal of Mathematical Physics}, 59(8):081506, August 2018.
+
+\bibitem{Kato_Book}
+Tosio Kato.
+\newblock {\em Perturbation Theory for Linear Operators}.
+\newblock Springer Berlin Heidelberg, 1995.
+
+\bibitem{ReedSimonII}
+Michael Reed and Barry Simon.
+\newblock {\em Methods of Modern Mathematical Physics {II}: Fourier Analysis, {Self-Adjointness}}.
+\newblock Academic Press, New York, 1975.
+
+\bibitem{Simon_1970cc}
+Barry Simon.
+\newblock Coupling constant analyticity for the anharmonic oscillator.
+\newblock {\em Annals of Physics}, 58(1):76–136, May 1970.
+\newblock With an appendix by A. Dicke.
+
+\end{thebibliography}

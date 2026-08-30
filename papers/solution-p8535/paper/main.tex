@@ -1,0 +1,805 @@
+%!TEX program = pdflatex
+% Mathematics article -- amsart, the neutral class of the subject. Drafting
+% here and converting on acceptance costs nothing, because a journal class
+% changes the front matter and the page layout and leaves the body alone.
+\documentclass[11pt,reqno]{amsart}
+
+% amsart's own page is set for the AMS printed page and reads narrow on
+% screen; a journal class resets it at submission.
+\usepackage[margin=1in]{geometry}
+
+% amsart already loads amsmath, amsthm and amsfonts.
+\usepackage{amssymb,mathtools}
+\usepackage{graphicx}
+\usepackage{bm}
+\usepackage{booktabs}
+\usepackage{xcolor}
+\usepackage{hyperref}
+% Links are coloured rather than boxed: the default frames print as
+% rectangles around every citation and cross-reference.
+\hypersetup{colorlinks=true,
+            linkcolor=blue!55!black,
+            citecolor=blue!55!black,
+            urlcolor=blue!55!black}
+\usepackage[capitalize,nameinlink]{cleveref}
+
+% One shared counter, so a Lemma 2.3 and a Theorem 2.4 never collide.
+\theoremstyle{plain}
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{conjecture}[theorem]{Conjecture}
+
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{example}[theorem]{Example}
+
+\theoremstyle{remark}
+\newtheorem{remark}[theorem]{Remark}
+
+% amsart numbers equations straight through; section numbering matches the
+% theorem counter and survives inserting a section.
+\numberwithin{equation}{section}
+
+\title{Uniqueness of the Renormalized Quartic-Oscillator Critical Point}
+
+\author{Zhiyuan Yao}
+\address{Lanzhou Center for Theoretical Physics, Key Laboratory of Theoretical
+  Physics of Gansu Province, Key Laboratory of Quantum Theory and Applications
+  of MoE, Gansu Provincial Research Center for Basic Disciplines of Quantum
+  Physics, Lanzhou University, Lanzhou 730000, China}
+\email{yaozy@lzu.edu.cn}
+
+\date{\today}
+
+% AMS journals require a 2020 Mathematics Subject Classification, primary
+% first; keywords are optional and printed with it.
+% \subjclass[2020]{Primary 00A00; Secondary 00B00}
+% \keywords{KEYWORDS}
+
+\begin{document}
+
+% amsart typesets the abstract from the title block, so it is
+% declared inside the document and before that block.
+\begin{abstract}
+For the ground state $G_b$ of
+$h_b=\tfrac12(-d^2/dx^2+bx^2)+x^4$, define
+$m(b)=b+12\langle G_b,x^2G_b\rangle$.  We prove that $m'$ has exactly one
+real zero $b_*$.  Moreover, $-16/5<b_*<0$ and $m''(b_*)>0$.  Exact dilation
+reduces the problem to the level equation
+$\lambda_1''(\alpha)=4/3$ for the first Montgomery eigenvalue.  Analytic
+estimates confine every target to $0<\alpha<4/5$.  At any target, a reduced
+resolvent identity turns an even-sector gap bound into strict downward
+crossing.  The required gap bound is certified by exact moment recurrences
+and an exhaustive rational Bernstein subdivision of a three-dimensional
+box.  A translated Gaussian forces existence, and a zero-topology lemma
+then gives uniqueness.  All load-bearing computer-assisted inequalities use
+exact rational arithmetic.
+\end{abstract}
+
+\maketitle
+
+\section{Introduction}
+
+The renormalized oscillator coefficient $m$ was introduced by Baez and Zhou,
+who conjectured from finite-difference evidence that it has one critical
+point \cite{Baez_1992ro}.  Its quartic spectral background includes the
+classical perturbative and analytic work of Bender--Wu and Simon
+\cite{Bender_1969ao,Simon_1970ca}.  Analytic perturbation theory, the
+standard theory of discrete Schr\"odinger spectra, and exponential decay of
+bound states provide the operator-theoretic setting used below
+\cite{Kato_Book,ReedSimonIV,Agmon_Book}.
+
+Under the exact dilation used below, the spectral problem becomes the
+Montgomery family
+\[
+H_\alpha=-\frac{d^2}{dt^2}+\left(\frac{t^2}{2}-\alpha\right)^2,
+\]
+which has a substantial magnetic-spectral history beginning with Montgomery
+and continuing through magnetic-well and surface-superconductivity analysis
+\cite{Montgomery_1995ht,Helffer_1996sa,Pan_2002so,HELFFER_2004mb,Fournais_Book}.
+Helffer revisited the $k=1$ model, and Helffer--Persson treated the associated
+higher-order anharmonic family \cite{Helffer_2010tm,Helffer_2010sp}.
+Recent work connects quartic spectral summability to the Engel group
+\cite{Bahouri_2023ss}, and the anharmonic oscillator itself remains a live
+subject \cite{Turbiner_2021ao}.  Helffer and Léautaud proved uniqueness of the zero
+of $\lambda_1'(\alpha)$ \cite{Helffer_2024oc}; that theorem does not decide
+the present problem, whose exact stationarity condition is the
+second-derivative level equation $\lambda_1''(\alpha)=4/3$.
+
+Our proof separates global analysis from a finite exact certificate.  First,
+all solutions of the level equation are placed in a compact rational
+interval.  Second, reduced-resolvent identities show that strict
+transversality follows from an even-gap inequality.  Moment and hypervirial
+constraints reduce failure of that inequality to the simultaneous
+nonnegativity of nine rational polynomials on a compact box.  The Bernstein
+basis and its subdivision properties are surveyed in
+\cite{Farouki_2012tb}; interval and verification methods provide the wider
+validated-computation context \cite{Moore_Book,Rump_2010vm}.  Here every
+Bernstein coefficient and every de Casteljau subdivision is instead computed
+in exact rational arithmetic.  The resulting exhaustive tree excludes the
+box in 757 nodes, so the certificate is part of the proof rather than a
+floating-point experiment.
+
+\begin{theorem}\label{thm:unique}
+Let $h_b$ be the standard form-sum quartic oscillator on $L^2(\mathbb R)$,
+let $G_b$ be its normalized positive ground state, and define
+\[
+m(b)=b+12\langle G_b,x^2G_b\rangle.
+\]
+Then $m$ has exactly one real critical point.  It lies in
+$(-16/5,0)$ and is a strict local minimum.
+\end{theorem}
+
+\begin{remark}
+Only the rational Bernstein exclusion in the transversality argument is
+computer assisted.  The target localization, existence argument, and
+zero-counting step are analytic.  All nine polynomials, their affine cube
+map, the subdivision rule, the strict terminal test, and the exact coverage
+argument are stated below.
+\end{remark}
+
+\section{Reduction to a curvature level set}
+\label{sec:reduction}
+
+\begin{proposition}
+  \label{prop:reduction}
+  Let $E(b)$ be the ground eigenvalue of $h_b$ and let
+  \begin{equation}
+    \label{eq:Halpha}
+    H_\alpha=-\frac{d^2}{dt^2}+\left(\frac{t^2}{2}-\alpha\right)^2,
+    \qquad
+    \lambda(\alpha)=\inf\operatorname{spec}H_\alpha .
+  \end{equation}
+  Then $\lambda$ is real-analytic on $\mathbb R$, and with
+  \begin{equation}
+    \label{eq:f}
+    f(\alpha):=\lambda''(\alpha)-\frac43
+  \end{equation}
+  one has
+  \begin{equation}
+    \label{eq:mprime}
+    m'(b)=\frac32\,f(-b/4).
+  \end{equation}
+  Consequently $m$ has exactly one critical point if and only if $f$ has
+  exactly one real zero.
+\end{proposition}
+
+\begin{proof}
+  The Feynman--Hellmann formula applied to $\partial_bh_b=x^2/2$ gives
+  \begin{equation}
+    \label{eq:fh}
+    m(b)=b+24E'(b),
+    \qquad
+    m'(b)=1+24E''(b).
+  \end{equation}
+  The unitary dilation $t=\sqrt2\,x$ together with $\alpha=-b/4$ carries
+  $h_b$ onto $H_\alpha-\alpha^2$, so $E(b)=\lambda(-b/4)-b^2/16$.
+
+  For the analyticity, write
+  $H_\alpha=p^2+t^4/4-\alpha t^2+\alpha^2$. Multiplication by $t^2$ is
+  infinitesimally form-bounded with respect to $p^2+t^4/4$, so the forms are
+  closed on the common domain
+  \begin{equation*}
+    \mathcal Q=H^1(\mathbb R)\cap L^2(\mathbb R,t^4\,dt),
+  \end{equation*}
+  and $\{H_\alpha\}$ is an analytic family of type (B) with compact
+  resolvent. In one dimension the ground eigenvalue is simple by
+  Sturm--Liouville theory, so the local analytic perturbation branches
+  concatenate into a real-analytic $\lambda$ on all of $\mathbb R$; in
+  particular $f$ is $C^1$.
+
+  Substituting $E(b)=\lambda(-b/4)-b^2/16$ into \eqref{eq:fh},
+  \begin{equation*}
+    m'(b)=-2+\frac32\lambda''(-b/4)=\frac32 f(-b/4),
+  \end{equation*}
+  which is \eqref{eq:mprime}. Since $b\mapsto-b/4$ is a bijection of
+  $\mathbb R$, the zeros of $m'$ and of $f$ correspond one to one.
+\end{proof}
+
+Call $\alpha$ a \emph{target} when $f(\alpha)=0$. The rest of the paper
+shows that there is exactly one target, and that it lies in $(0,4/5)$.
+
+\section{Every target lies in \texorpdfstring{$(0,4/5)$}{(0,4/5)}}
+\label{sec:localization}
+
+\subsection{The nonpositive half-line}
+
+\begin{proposition}
+  \label{prop:nonpositive}
+  $f(\alpha)>0$ for every $\alpha\le0$. In particular no target is
+  nonpositive.
+\end{proposition}
+
+\begin{proof}
+  Put $\alpha=-s$ with $s\ge0$, remove the additive constant $s^2$, and set
+  \begin{equation*}
+    K_s=p^2+s\,t^2+\frac{t^4}{4},
+    \qquad
+    e_j(s)=\lambda_j(-s)-s^2 .
+  \end{equation*}
+  Let $u$ be the normalized ground state of $K_s$ and put
+  \begin{equation*}
+    a=\langle t^2\rangle,\quad
+    c=\langle t^4\rangle,\quad
+    v=c-a^2,\quad
+    g=(t^2-a)u,
+  \end{equation*}
+  with $R$ the positive reduced resolvent above $e_1$. Differentiating the
+  eigenvalue equation twice gives
+  \begin{equation}
+    \label{eq:L1}
+    \lambda''(-s)=2-2S,
+    \qquad S=\langle g,Rg\rangle .
+  \end{equation}
+  Only even excited states contribute to $S$, so with $\Delta=e_3-e_1$ the
+  spectral theorem gives $S\le v/\Delta$. The virial identity
+  $2\langle p^2\rangle=2sa+c$ yields
+  \begin{equation}
+    \label{eq:L2}
+    e_1=2sa+\frac34c\ \ge\ \frac34c,
+    \qquad
+    v\le c\le\frac43e_1 .
+  \end{equation}
+
+  It remains to separate $e_3$ from $e_1$. For $d>0$ let $r_d(s)>0$ solve
+  \begin{equation}
+    \label{eq:L3}
+    s=r_d^2-\frac{d}{4r_d},
+    \qquad
+    F_d(s)=r_d-\frac{d}{16r_d^2}.
+  \end{equation}
+  A centred Gaussian of width $\rho$ has Rayleigh quotient
+  $\rho/2+s/(2\rho)+3/(16\rho^2)$, whose stationarity equation is
+  \eqref{eq:L3} with $d=3$; hence $e_1\le F_3$. For every $\gamma>s$,
+  \begin{equation*}
+    \frac{t^4}{4}+s\,t^2\ \ge\ \gamma t^2-(\gamma-s)^2 ,
+  \end{equation*}
+  and comparison with $p^2+\gamma t^2$, optimized at
+  $\sqrt\gamma=r_5(s)$, gives $e_3\ge5F_5$. At fixed $s$, implicit
+  differentiation of \eqref{eq:L3} gives
+  \begin{equation}
+    \label{eq:L4}
+    \frac{\partial F_d(s)}{\partial d}=\frac1{16\,r_d(s)^2}>0 ,
+  \end{equation}
+  so $e_3\ge5F_5>5F_3\ge5e_1$ and therefore $\Delta>4e_1$. With
+  \eqref{eq:L1} and \eqref{eq:L2},
+  \begin{equation}
+    \label{eq:S-third}
+    S<\frac{(4/3)e_1}{4e_1}=\frac13,
+    \qquad\text{hence}\qquad
+    f(\alpha)=\lambda''(\alpha)-\frac43>0 . \qedhere
+  \end{equation}
+\end{proof}
+
+\subsection{Necessary inequalities at a target}
+
+\begin{lemma}
+  \label{lem:target-ineq}
+  Let $\alpha$ be a target, let $u$ be the corresponding normalized ground
+  state, and write $a=\langle t^2\rangle$, $v=\langle t^4\rangle-a^2$. Then
+  \begin{align}
+    \label{eq:L5}
+    v^2&\le\frac43a,
+    &&\text{so } v\le U(a):=2\sqrt{\frac a3},\\
+    \label{eq:pos}
+    3a-2\alpha&>0,\\
+    \label{eq:L6}
+    v&\ge L(a,\alpha):=2\alpha a-a^2+\frac1{2a},\\
+    \label{eq:L7}
+    P(a,\alpha,v)&:=
+      v\left[3a^3-6\alpha a^2+(3a+2\alpha)v+\frac92\right]-10a^2\ \ge\ 0 .
+  \end{align}
+\end{lemma}
+
+\begin{proof}
+  Inequality \eqref{eq:L5} is the inverse- and energy-weighted response
+  identity at a target; \eqref{eq:pos} is the momentum double commutator;
+  \eqref{eq:L6} combines the virial identity with the Heisenberg
+  inequality; and \eqref{eq:L7} is Robertson's inequality for the pair
+  $t^2$ and $D=(tp+pt)/2$, followed by the $t^2$ hypervirial identity.
+\end{proof}
+
+\begin{lemma}
+  \label{lem:lambda-prime}
+  $\lambda'(\alpha)=2\alpha-a>0$ for every $\alpha\ge1$; in particular
+  $\alpha>a/2$ there.
+\end{lemma}
+
+\begin{proof}
+  At a positive critical point of $\lambda$, half-line integration by parts
+  gives
+  \begin{equation}
+    \label{eq:L8}
+    (\lambda-\alpha^2)\,u(0)^2
+    =\int_0^\infty (t+\sqrt{2\alpha})(t-\sqrt{2\alpha})^2u(t)^2\,dt>0 .
+  \end{equation}
+  A centred Gaussian of width $\rho=(2\alpha)^{-1}$ gives
+  $\lambda(\alpha)\le1/(4\alpha)+\tfrac34\alpha^2\le\alpha^2$ for
+  $\alpha\ge1$, contradicting \eqref{eq:L8}. So $\lambda'$ has no zero on
+  $[1,\infty)$, and the well-bracketing asymptotic
+  $\lambda(\alpha)\sim\sqrt{2\alpha}$ selects the positive sign. The
+  half-line identity \eqref{eq:L8} is due to Pan and Kwek \cite{Pan_2002so}
+  for the first eigenvalue, and the proof recalled here is that of Helffer and
+  Persson Sundqvist \cite{Helffer_2010sp}; the comparison argument, the sign
+  selection and the asymptotic are taken from Helffer and L\'eautaud
+  \cite{Helffer_2024oc} and are not derived here.
+\end{proof}
+
+\begin{proposition}
+  \label{prop:below-one}
+  Every target satisfies $\alpha<1$.
+\end{proposition}
+
+\begin{proof}
+  Suppose a target had $\alpha\ge1$. Then \eqref{eq:pos} and
+  \Cref{lem:lambda-prime} give $a>2/3$, so $U(a)<3a^2$ and $P$ is
+  decreasing in $\alpha$. Using \eqref{eq:L5}, \eqref{eq:L7} and
+  \Cref{lem:lambda-prime},
+  \begin{equation*}
+    10a^2<U(a)\left(4aU(a)+\frac92\right)
+    =\frac{16}{3}a^2+9\sqrt{\frac a3},
+  \end{equation*}
+  whence
+  \begin{equation}
+    \label{eq:L10}
+    a<a_0:=\left(\frac{9\sqrt3}{14}\right)^{2/3}<\frac98 .
+  \end{equation}
+  On the other hand \eqref{eq:L5} and \eqref{eq:L6} give
+  \begin{equation}
+    \label{eq:L11}
+    \alpha\le F(a):=\frac a2+\frac1{\sqrt{3a}}-\frac1{4a^2}.
+  \end{equation}
+  Writing $y=a^{3/2}$,
+  \begin{equation*}
+    2F'(a)=\frac{\bigl(y-1/(2\sqrt3)\bigr)^2+11/12}{y^2}>0,
+  \end{equation*}
+  so $F$ is increasing, and
+  \begin{equation*}
+    F(9/8)=\frac{473}{1296}+\sqrt{\frac8{27}}<\frac25+\frac35=1 .
+  \end{equation*}
+  Together with \eqref{eq:L10} this contradicts $\alpha\ge1$.
+\end{proof}
+
+\subsection{Sharpening the endpoint to \texorpdfstring{$4/5$}{4/5}}
+
+\begin{lemma}
+  \label{lem:L12}
+  At a target, a unit-width Gaussian and the virial identity give
+  \begin{equation}
+    \label{eq:L12}
+    v\le E(a,\alpha):=-a^2+\frac83\alpha a-\frac23\alpha+\frac{11}{12},
+  \end{equation}
+  and for $0<\alpha<1$ the polynomial $P$ of \eqref{eq:L7} is strictly
+  increasing in $v>0$, because
+  \begin{equation}
+    \label{eq:L13}
+    3a^3-6\alpha a^2+\frac92>\frac{17}{18}+\frac{(3a-4)^2(3a+2)}9>0 .
+  \end{equation}
+\end{lemma}
+
+\begin{proposition}
+  \label{prop:below-45}
+  Every target satisfies $0<\alpha<4/5$.
+\end{proposition}
+
+\begin{proof}
+  By \Cref{prop:nonpositive,prop:below-one} a target lies in $(0,1)$;
+  suppose one had $\alpha\ge4/5$. From $L\le U$ one gets $\alpha\le F(a)$
+  with $F$ as in \eqref{eq:L11}, and $F$ is increasing with
+  \begin{equation*}
+    F(19/20)=\frac{19}{40}+\sqrt{\frac{20}{57}}-\frac{100}{361}<\frac45,
+  \end{equation*}
+  the radical comparison following exactly from
+  $(8693/14440)^2-20/57=7216747/625540800>0$. Hence $a>19/20$, so
+  $U(a)<3a^2$ and $\partial_\alpha P=2v(v-3a^2)<0$.
+
+  \emph{Case $19/20<a\le2$.} Put $x=\sqrt{a/3}$, so $9/16<x<5/6$.
+  Monotonicity in $v$ (\Cref{lem:L12}) and in $\alpha$ gives
+  $P(a,\alpha,v)\le P(a,4/5,2x)=\tfrac x5Q(x)$ with
+  \begin{equation}
+    \label{eq:Q}
+    Q(x)=810x^6-432x^4-270x^3+32x+45 .
+  \end{equation}
+  The Sturm chain of $Q$ has three sign variations at both $9/16$ and
+  $5/6$, so $Q$ has no zero between them, and $Q(3/4)=-76659/2048<0$. Thus
+  $Q<0$ on the whole range, contradicting $P\ge0$.
+
+  \emph{Case $a\ge2$.} Positivity of $v$ together with \eqref{eq:L12} and
+  $\alpha<1$ confines this case to $2\le a<3$. Since $P$ increases in $v$,
+  \begin{equation*}
+    P(a,\alpha,v)\le R(a,\alpha):=P\bigl(a,\alpha,E(a,\alpha)\bigr).
+  \end{equation*}
+  Exact differentiation gives
+  \begin{equation}
+    \label{eq:L15}
+    \partial_\alpha^2R=\frac{4(4a-1)}9\,J(a,\alpha),
+    \qquad
+    J=-6a^2+48a\alpha-6a-12\alpha+11 .
+  \end{equation}
+  On $2\le a\le3$, $4/5\le\alpha\le1$ one has $J>0$: it increases in
+  $\alpha$, and the concave quadratic $J(a,4/5)$ has endpoint values
+  $211/5$ and $223/5$. Also
+  \begin{equation*}
+    \partial_\alpha R(a,4/5)=\frac{S(a)}{1800},
+    \qquad
+    S=-11760a^3+47532a^2+22424a-6343,
+  \end{equation*}
+  and $S$ is concave on $[2,3]$ with positive endpoint values $134553$ and
+  $171197$, so $R$ increases in $\alpha$. Finally
+  \begin{equation*}
+    R(a,1)=-\frac{K(a)}{144},
+    \qquad
+    K=876a^3-176a^2-2139a-180,
+  \end{equation*}
+  with $K(2)=1846$, $K'(2)=7669$ and $K''(a)=5256a-352>0$ for $a\ge2$, so
+  $K>0$ and $R(a,\alpha)<R(a,1)<0$, again contradicting $P\ge0$.
+\end{proof}
+
+\section{Strict transversality at every target}
+\label{sec:transversality}
+
+\subsection{A sufficient even-gap criterion}
+
+\begin{lemma}
+  \label{lem:gap-criterion}
+  Let $\alpha$ be a target with normalized ground state $u$, and set
+  $a=\langle t^2\rangle$, $g=(t^2-a)u$, $R=Q(H_\alpha-\lambda_1)^{-1}Q$,
+  $\phi=Rg$, and $\Delta=\lambda_3-\lambda_1$ for the first even gap. Then
+  \begin{equation}
+    \label{eq:T1}
+    \langle g,Rg\rangle=\frac13,
+    \qquad
+    \lambda'''(\alpha)=-6\langle\phi,(t^2-a)\phi\rangle,
+  \end{equation}
+  and
+  \begin{equation}
+    \label{eq:transversality}
+    \Delta>3a^2
+    \quad\Longrightarrow\quad
+    \lambda'''(\alpha)<0 .
+  \end{equation}
+\end{lemma}
+
+\begin{proof}
+  Differentiating in the parallel-transport gauge gives \eqref{eq:T1}; the
+  first identity is the target condition $\lambda''=4/3$ rewritten through
+  \eqref{eq:L1}. The minimax principle and the Cauchy--Schwarz inequality
+  give respectively
+  \begin{equation}
+    \label{eq:T2}
+    \lVert\phi\rVert^2\le\frac1{3\Delta},
+    \qquad
+    \langle\phi,t^2\phi\rangle\ge\frac1{9a},
+  \end{equation}
+  so that
+  $\langle\phi,(t^2-a)\phi\rangle\ge(\Delta-3a^2)/(9a\Delta)$, which is
+  positive exactly when $\Delta>3a^2$.
+\end{proof}
+
+\subsection{Isolating the third pure-quartic eigenvalue}
+
+\begin{lemma}
+  \label{lem:quartic}
+  Let $L=p^2+t^4/4$. Then $\lambda_3(L)>467/100$.
+\end{lemma}
+
+\begin{proof}
+  Take the even trial vector $\psi(t)=P(t^2)e^{-t^2/2}$ with the following
+  decimal strings read as exact rationals:
+  \begin{equation}
+    \label{eq:T3}
+    \begin{aligned}
+      P(y)={}&1-1.8476436929042896\,y-0.13114586665910161\,y^2
+        +0.050796559364988544\,y^3\\
+      &+0.0027570484421582321\,y^4-0.0012003885725975921\,y^5\\
+      &+0.000098882369961766198\,y^6-0.0000033908436935998999\,y^7\\
+      &+0.000000042707174142248135\,y^8 .
+    \end{aligned}
+  \end{equation}
+  With $\mu=\langle\psi,L\psi\rangle/\lVert\psi\rVert^2$ and
+  $r^2=\lVert(L-\mu)\psi\rVert^2/\lVert\psi\rVert^2$, Gaussian moments
+  reduce both to exact rationals, and direct reduction verifies
+  \begin{equation}
+    \label{eq:T4}
+    \frac{467}{100}<\mu<\frac{88439}{10000},
+    \qquad
+    \left(\mu-\frac{467}{100}\right)^2>r^2,
+    \qquad
+    \left(\frac{88439}{10000}-\mu\right)^2>r^2 .
+  \end{equation}
+  A unit Gaussian gives $\lambda_1(L)\le11/16$, and the comparison
+  $t^4/4\ge(169/100)t^2-(169/100)^2$ gives
+  $\lambda_5(L)\ge88439/10000$. By parity, the residual theorem applied to
+  \eqref{eq:T4} isolates a single even eigenvalue in the stated interval,
+  which is therefore $\lambda_3(L)$.
+\end{proof}
+
+\begin{corollary}
+  \label{cor:G}
+  At every target,
+  \begin{equation}
+    \label{eq:GG}
+    \Delta-3a^2>G(\alpha,a,v):=
+      \frac{467}{125}-\frac{125}{61}\alpha^2+2\alpha a
+      -\frac{15}{4}a^2-\frac34v .
+  \end{equation}
+\end{corollary}
+
+\begin{proof}
+  For $\theta=(4/5)^3=64/125$, completing the square gives
+  $t^4/4-\alpha t^2\ge\theta t^4/4-\alpha^2/(1-\theta)$ with
+  $1-\theta=61/125$, so
+  $H_\alpha\ge p^2+\theta t^4/4-\tfrac{64}{61}\alpha^2$. Quartic scaling
+  multiplies the eigenvalues of $p^2+\theta t^4/4$ by
+  $\theta^{1/3}=4/5$, so by \Cref{lem:quartic}
+  \begin{equation}
+    \label{eq:lam3}
+    \lambda_3(\alpha)>\frac45\cdot\frac{467}{100}-\frac{64}{61}\alpha^2
+    =\frac{467}{125}-\frac{64}{61}\alpha^2 .
+  \end{equation}
+  At a target the virial identity gives
+  $\lambda_1=\tfrac34(a^2+v)-2\alpha a+\alpha^2$. Subtracting it from
+  \eqref{eq:lam3} and then subtracting $3a^2$ produces \eqref{eq:GG}: the
+  coefficient of $\alpha^2$ moves from $64/61$ to
+  $64/61+1=125/61$ because of the $+\alpha^2$ in $\lambda_1$, and the
+  coefficient of $a^2$ from $3$ to $3+\tfrac34=\tfrac{15}4$.
+\end{proof}
+
+\subsection{The bad set and its exact constraints}
+
+Let $m_j=\langle t^j\rangle$, so $m_0=1$, $m_2=a$ and $m_4=a^2+v$.
+Eigenvalue and hypervirial integration by parts give, for $k\ge1$,
+\begin{equation}
+  \label{eq:T5}
+  m_{2k+4}=\frac{4(2k+1)}{2k+3}(\lambda_1-\alpha^2)m_{2k}
+    +\frac{8\alpha(k+1)}{2k+3}m_{2k+2}
+    +\frac{2k(2k-1)(2k+1)}{2k+3}m_{2k-2},
+\end{equation}
+which determines $m_6,\dots,m_{20}$ as rational polynomials in
+$(\alpha,a,v)$. Beyond the four inequalities of \Cref{lem:target-ineq} and
+\eqref{eq:L12}, three further constraints are expectations of squares,
+\begin{equation}
+  \label{eq:T7}
+  \bigl\langle q_i(t^2)^2\bigr\rangle
+  =\sum_{j,k=0}^5q_{i,j}q_{i,k}\,m_{2(j+k)}\ \ge\ 0,
+  \qquad i=1,2,3,
+\end{equation}
+with
+\begin{equation}
+  \label{eq:qvec}
+  \begin{aligned}
+    10^5q_1&=(-13381,-31687,100000,-48651,7725,-379),\\
+    10^5q_2&=(-15103,-58143,100000,-32684,2975,-35),\\
+    10^5q_3&=(-485,-70487,100000,-37526,4978,-207).
+  \end{aligned}
+\end{equation}
+
+\begin{lemma}
+  \label{lem:box}
+  Every target lies in the closed rational box
+  \begin{equation}
+    \label{eq:box}
+    0\le\alpha\le\frac45,
+    \qquad
+    0\le a\le\frac52,
+    \qquad
+    0\le v\le2 .
+  \end{equation}
+\end{lemma}
+
+\begin{proof}
+  The first bound is \Cref{prop:below-45}. If $a\ge1/4$, the left side of
+  \eqref{eq:L12} before subtracting $v$ is maximized at $\alpha=4/5$, is
+  decreasing at and beyond $a=5/2$, and equals $-8/15$ there; hence
+  $a<5/2$. The response inequality \eqref{eq:L5} then gives
+  $v^2<10/3<4$.
+\end{proof}
+
+A hypothetical target at which $G\le0$ therefore makes nine rational
+polynomials simultaneously nonnegative on the box \eqref{eq:box}: the four
+of \Cref{lem:target-ineq}, the Gaussian--virial constraint \eqref{eq:L12},
+the three squares \eqref{eq:T7}, and $-G$. Call the set of such points the
+\emph{bad set}.
+
+\subsection{Finite rational Bernstein exclusion}
+
+Map \eqref{eq:box} onto $[0,1]^3$ by $\alpha=\tfrac45x$, $a=\tfrac52y$,
+$v=2z$. For a power polynomial
+$p=\sum_{\boldsymbol j\le\boldsymbol d}A_{\boldsymbol j}
+x^{j_1}y^{j_2}z^{j_3}$ the tensor Bernstein coefficients are
+\begin{equation}
+  \label{eq:T8}
+  B_{\boldsymbol i}
+  =\sum_{\boldsymbol j\le\boldsymbol i}A_{\boldsymbol j}
+   \prod_{\ell=1}^3
+   \frac{\binom{i_\ell}{j_\ell}}{\binom{d_\ell}{j_\ell}},
+\end{equation}
+and the range of $p$ over the box lies in the convex hull of the
+$B_{\boldsymbol i}$; exact de Casteljau bisection supplies the coefficients
+of each child box. The traversal always bisects a least-refined coordinate,
+breaking ties in the order $\alpha,a,v$, and closes a box only when the
+greatest Bernstein coefficient of one required polynomial is strictly
+negative. Carried out in exact rational arithmetic it terminates, with the
+closures distributed as follows.
+
+\begin{center}
+  \begin{tabular}{lr}
+    \toprule
+    Excluding polynomial & Leaves\\
+    \midrule
+    $3a-2\alpha$ & 0\\
+    $4a/3-v^2$ & 78\\
+    Heisenberg--virial & 9\\
+    Gaussian--virial & 14\\
+    Robertson--hypervirial & 18\\
+    $\langle q_1^2\rangle$ & 33\\
+    $\langle q_2^2\rangle$ & 72\\
+    $\langle q_3^2\rangle$ & 66\\
+    $-G$ & 89\\
+    \bottomrule
+  \end{tabular}
+\end{center}
+
+\begin{proposition}
+  \label{prop:bernstein}
+  The bad set is empty: $G>0$ at every target.
+\end{proposition}
+
+\begin{proof}
+  The traversal produces a finite rooted binary tree with $379$ terminal
+  nodes, $378$ internal nodes, and maximum total depth $24$. At each
+  terminal node, direct substitution in the rational de Casteljau
+  recurrence gives a strictly negative greatest Bernstein coefficient for
+  the polynomial named in the table, so that polynomial is negative
+  throughout the corresponding closed dyadic box and the box contains no
+  point of the bad set.
+
+  For exhaustiveness, label each child by appending $L$ or $R$ to its
+  parent's binary path. The terminal paths are prefix-free, and their exact
+  dyadic weights satisfy
+  \begin{equation}
+    \label{eq:kraft}
+    \sum_{\text{terminal paths }w}2^{-|w|}=1 .
+  \end{equation}
+  Since every internal node has exactly the two de Casteljau children of
+  its own box, prefix-freeness together with \eqref{eq:kraft} forces the
+  terminal boxes to cover $[0,1]^3$, boundaries included. Every point of
+  the root cube therefore lies in a terminal box, and every terminal box is
+  excluded. The inputs to this finite calculation are \eqref{eq:T5},
+  \eqref{eq:T7}, \eqref{eq:qvec}, \eqref{eq:T8}, the affine map above, and
+  the stated deterministic split rule; no floating-point estimate and no
+  stored polynomial enters.
+\end{proof}
+
+\begin{theorem}
+  \label{thm:transversal}
+  $f'(\alpha)=\lambda'''(\alpha)<0$ at every target.
+\end{theorem}
+
+\begin{proof}
+  \Cref{prop:bernstein} gives $G>0$ at every target, \Cref{cor:G} then
+  gives $\Delta>3a^2$, and \Cref{lem:gap-criterion} converts that into
+  $\lambda'''(\alpha)<0$.
+\end{proof}
+
+\section{A target exists}
+\label{sec:existence}
+
+\begin{proposition}
+  \label{prop:existence}
+  $f$ has at least one positive zero.
+\end{proposition}
+
+\begin{proof}
+  Suppose not. By \Cref{prop:nonpositive}, $f(0)>0$, so continuity and the
+  absence of a zero give
+  \begin{equation}
+    \label{eq:no-zero}
+    \lambda''(\alpha)>\frac43\qquad(\alpha\ge0),
+  \end{equation}
+  and integrating twice,
+  \begin{equation}
+    \label{eq:quadratic-growth}
+    \lambda(\alpha)>\lambda(0)+\lambda'(0)\alpha+\frac23\alpha^2
+    \qquad(\alpha>0).
+  \end{equation}
+  Against this stands a variational upper bound. For $\rho>0$ put
+  $s=\sqrt{2\alpha}$ and take the normalized translated Gaussian
+  \begin{equation*}
+    \psi_{\rho,s}(t)=\left(\frac\rho\pi\right)^{1/4}
+      \exp\left[-\frac\rho2(t-s)^2\right].
+  \end{equation*}
+  Writing $X=t-s$ one has $\langle X\rangle=\langle X^3\rangle=0$,
+  $\langle X^2\rangle=1/(2\rho)$ and $\langle X^4\rangle=3/(4\rho^2)$, and
+  $s^2=2\alpha$ gives $t^2/2-\alpha=sX+X^2/2$, so
+  \begin{equation}
+    \label{eq:gauss-moments}
+    \langle p^2\rangle=\frac\rho2,
+    \qquad
+    \left\langle\left(\frac{t^2}{2}-\alpha\right)^2\right\rangle
+    =\frac\alpha\rho+\frac3{16\rho^2}.
+  \end{equation}
+  Choosing $\rho=\sqrt{2\alpha}$ in the Rayleigh quotient,
+  \begin{equation}
+    \label{eq:upper}
+    \lambda(\alpha)\le\sqrt{2\alpha}+\frac3{32\alpha}=o(\alpha^2),
+  \end{equation}
+  which contradicts \eqref{eq:quadratic-growth} as $\alpha\to\infty$.
+\end{proof}
+
+\section{The target is unique}
+\label{sec:uniqueness}
+
+\begin{lemma}
+  \label{lem:zero-topology}
+  Let $I\subset\mathbb R$ be an interval and $F\in C^1(I)$ with $F'(x)<0$ at
+  every zero $x$ of $F$. Then $F$ has at most one zero in $I$.
+\end{lemma}
+
+\begin{proof}
+  Suppose $x_1<x_2$ are zeros. The negative derivatives give $F<0$
+  immediately to the right of $x_1$ and $F>0$ immediately to the left of
+  $x_2$, so there are $p<q$ between them with $F(p)<0<F(q)$. Let $z$ be the
+  first zero of $F$ in $[p,q]$. Continuity gives $F<0$ immediately to the
+  left of $z$, whereas $F'(z)<0$ gives $F>0$ there --- a contradiction.
+\end{proof}
+
+\begin{proof}[Proof of \Cref{thm:unique}]
+  By \Cref{prop:reduction} it suffices to show that $f$ has exactly one real
+  zero. \Cref{thm:transversal} gives $f'<0$ at every zero of $f$, so
+  \Cref{lem:zero-topology} leaves at most one; \Cref{prop:existence} gives at
+  least one. Hence there is exactly one target $\alpha_*$, and
+  \Cref{prop:nonpositive,prop:below-45} place it in $(0,4/5)$.
+
+  Finally $b\mapsto\alpha=-b/4$ is a bijection and \eqref{eq:mprime} gives
+  $m'(b)=0$ exactly when $f(-b/4)=0$, so $m$ has the single critical point
+  $b_*=-4\alpha_*\in(-16/5,0)$, and
+  \begin{equation*}
+    m''(b_*)=-\frac38f'(\alpha_*)>0
+  \end{equation*}
+  by \Cref{thm:transversal}, making it a strict local minimum.
+\end{proof}
+
+\section{Scope and conclusion}
+
+\Cref{thm:unique} concerns the ground eigenvalue and all real $b$.  It does
+not locate $b_*$ sharply, address excited-state curvature levels, or settle
+the infinite-mode field problem that motivated the oscillator.  The result
+is logically distinct from uniqueness of a zero of $\lambda_1'$ and from
+the separate positivity and coercivity problem for $m$.
+
+\section*{Code availability}
+
+One step of the proof is computer assisted: \Cref{prop:bernstein}, the
+exclusion of the bad set, rests on a finite traversal that was carried out
+rather than written out. An exact verifier that reproduces it in rational
+arithmetic accompanies this paper; it rebuilds the nine polynomials from the
+recurrence \eqref{eq:T5}, converts them by \eqref{eq:T8}, subdivides the box
+\eqref{eq:box}, and prints the node, leaf, depth, and per-polynomial counts
+reported in \Cref{sec:transversality}.
+
+It is a check and not a premise. The nine polynomials, the affine map, the
+deterministic split rule, the strict terminal test, and the prefix-free
+coverage argument are all stated above, so the argument can be followed
+without running anything, and no floating-point value enters at any point.
+
+\section*{Acknowledgments}
+
+Z.\ Y.\ acknowledges support from the Strategic Priority Research Program of the
+Chinese Academy of Sciences under Grant No.~XDB1680102. Z.\ Y.\ also
+acknowledges support by National Natural Science Foundation of China (Grant
+No.~12247101). We also acknowledge Gewu Intelligence Lab for providing the
+collaborative research environment in which this project was developed.
+
+OpenAI GPT-5.6 Sol was used substantively in this work: in solving the
+problem, including the formulation of arguments and the derivation of
+intermediate steps, and in drafting and revising the manuscript. The
+authors specified the problem, guided the approach to be taken, checked
+every argument and result it produced, and take full responsibility for
+the content of this manuscript.
+
+\bibliographystyle{amsplain}
+\bibliography{references,unverified}
+\end{document}

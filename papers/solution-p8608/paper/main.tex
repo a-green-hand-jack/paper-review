@@ -1,0 +1,646 @@
+%!TEX program = pdflatex
+% Mathematics article -- amsart, the neutral class of the subject. Drafting
+% here and converting on acceptance costs nothing, because a journal class
+% changes the front matter and the page layout and leaves the body alone.
+\documentclass[11pt,reqno]{amsart}
+
+% amsart's own page is set for the AMS printed page and reads narrow on
+% screen; a journal class resets it at submission.
+\usepackage[margin=1in]{geometry}
+
+% amsart already loads amsmath, amsthm and amsfonts.
+\usepackage{amssymb,mathtools}
+\usepackage{graphicx}
+\usepackage{bm}
+\usepackage{xcolor}
+\usepackage{hyperref}
+% Links are coloured rather than boxed: the default frames print as
+% rectangles around every citation and cross-reference.
+\hypersetup{colorlinks=true,
+            linkcolor=blue!55!black,
+            citecolor=blue!55!black,
+            urlcolor=blue!55!black}
+\usepackage[capitalize,nameinlink]{cleveref}
+
+% One shared counter, so a Lemma 2.3 and a Theorem 2.4 never collide.
+\theoremstyle{plain}
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{conjecture}[theorem]{Conjecture}
+
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{example}[theorem]{Example}
+
+\theoremstyle{remark}
+\newtheorem{remark}[theorem]{Remark}
+
+% amsart numbers equations straight through; section numbering matches the
+% theorem counter and survives inserting a section.
+\numberwithin{equation}{section}
+
+% A few lines -- the affiliation above all -- hold unbreakable runs slightly
+% wider than the measure; let TeX stretch them rather than push type into the
+% margin.
+\emergencystretch=2em
+
+\title[Counterexample to universal eigenfunction asymptotics]{A period-convention counterexample to universal\\eigenfunction asymptotics}
+
+\author{Zhiyuan Yao}
+\address{Lanzhou Center for Theoretical Physics, Key Laboratory of Theoretical
+  Physics of Gansu Province, Key Laboratory of Quantum Theory and Applications
+  of MoE, Gansu Provincial Research Center for Basic Disciplines of Quantum
+  Physics, Lanzhou University, Lanzhou 730000, China}
+\email{yaozy@lzu.edu.cn}
+
+\date{\today}
+
+% AMS journals require a 2020 Mathematics Subject Classification, primary
+% first; keywords are optional and printed with it.
+% \subjclass[2020]{Primary 00A00; Secondary 00B00}
+% \keywords{KEYWORDS}
+
+\begin{document}
+
+% amsart typesets the abstract from the title block, so it is
+% declared inside the document and before that block.
+\begin{abstract}
+A conjecture on phase-resonant quasiperiodic Schr\"odinger operators asserts
+exact two-sided eigenfunction tail asymptotics wherever the Lyapunov exponent
+exceeds the phase exponent $\delta(\alpha,\theta)$: the lower limit of
+$-\log\lVert U(n)\rVert/|n|$ is claimed to equal
+$L_V(E)-\delta(\alpha,\theta)$, for every nonconstant even real-analytic
+potential on $\mathbb T=\mathbb R/\mathbb Z$. Nothing in the statement
+requires $1$ to be the shortest period of the potential, and we show that it
+is false as a consequence. The phase exponent is a purely arithmetic
+quantity, depending on the frequency and phase alone and not on the
+potential, so it cannot adapt when the potential has a smaller period. Taking
+$V(t)=2e^{3}\cos(4\pi t)$, of primitive period $1/2$, we construct for every
+standard Diophantine $\alpha$ a phase whose exponent in the period-one
+coordinate is $1$ while the same operator in its primitive almost-Mathieu
+coordinate has exponent $2$. The Lyapunov exponent is $3$, so localization
+holds and the eigenfunctions are the objects the statement describes; but
+their decay is fixed in the primitive coordinate, where the sharp almost
+Mathieu asymptotics give the positive-tail value $3-2=1$ in place of the
+$3-1=2$ that the statement requires. Defining the phase exponent through the
+minimal fundamental period removes the counterexample, and the corrected
+statement is not addressed here.
+\end{abstract}
+
+\maketitle
+
+\section{Introduction}
+\label{sec:intro}
+
+Let $\mathbb T=\mathbb R/\mathbb Z$, let $V:\mathbb T\to\mathbb R$ be
+nonconstant, even and real-analytic, and consider the one-frequency
+quasiperiodic Schr\"odinger operator $H_{V,\alpha,\theta}$ with Lyapunov
+exponent $L_V(E)$ and phase exponent
+\begin{equation}
+  \label{eq:delta}
+  \delta(\alpha,\theta)
+  =\limsup_{|k|\to\infty}
+   -\frac{\log\lVert2\theta+k\alpha\rVert_{\mathbb T}}{|k|}.
+\end{equation}
+For an $\ell^2$ eigenfunction $\phi$ write
+$U(n)=(\phi(n),\phi(n-1))^{\mathsf T}$. The following has been conjectured
+for this class, as the generalization to arbitrary even analytic $V$ of a
+theorem proved for the almost Mathieu operator
+\cite{Jitomirskaya_2024ur,Jitomirskaya_2023od}:
+
+\begin{quote}
+  (S)\quad in the regime $0<\delta(\alpha,\theta)<L_V(E)$, every $\ell^2$
+  eigenfunction satisfies
+  \begin{equation*}
+    \limsup_{|n|\to\infty}\frac{-\log\lVert U(n)\rVert}{|n|}=L_V(E),
+    \qquad
+    \liminf_{|n|\to\infty}\frac{-\log\lVert U(n)\rVert}{|n|}
+      =L_V(E)-\delta(\alpha,\theta).
+  \end{equation*}
+\end{quote}
+
+This paper shows that (S) is false as written, and that the reason is a
+hypothesis it does not impose. The upper limit is not at issue; what fails is
+the value assigned to the lower one, and it fails because the exponent
+subtracted is computed against the wrong period.
+
+\paragraph{The defect.} Observe what \eqref{eq:delta} does and does not
+depend on. It is a statement about how well $-2\theta$ is approximated by the
+orbit $k\alpha$ in $\mathbb R/\mathbb Z$: an arithmetic quantity built from
+$\alpha$ and $\theta$ alone, in which the potential never appears. Statement
+(S) pairs it with $L_V(E)$, which does depend on $V$. That pairing is exactly
+right when $1$ is the minimal period of $V$, which is the case for the almost
+Mathieu potential the statement generalizes. It is not right otherwise,
+because $\mathbb R/\mathbb Z$ admits perfectly good nonconstant even
+real-analytic functions of smaller period, and for those the operator is the
+same operator written in the wrong coordinate.
+
+Take
+\begin{equation}
+  \label{eq:V}
+  V(t)=2\lambda\cos(4\pi t),
+\end{equation}
+which is nonconstant, even and real-analytic on $\mathbb T$ and so satisfies
+every hypothesis of (S), and whose primitive period is $1/2$. Then
+$V(\theta+n\alpha)=2\lambda\cos\bigl(2\pi(2\theta+2n\alpha)\bigr)$, so
+$H_{V,\alpha,\theta}$ \emph{is} an almost Mathieu operator, with coupling
+$\lambda$, frequency $2\alpha$ and phase $2\theta$. Its phase resonance is
+governed by the arithmetic of that primitive pair, while \eqref{eq:delta}
+measures the arithmetic of $(\alpha,\theta)$. The two need not agree, and
+\Cref{sec:construction} constructs, for every standard Diophantine $\alpha$, a
+phase at which they differ by exactly a factor of two: the stated exponent is
+$1$, the primitive one is $2$.
+
+\paragraph{The consequence.} Fix $\lambda=e^{3}$ in \eqref{eq:V}. The Lyapunov
+exponent is then $3$, which exceeds the primitive exponent $2$, so the
+operator is Anderson localized: eigenvalues and eigenfunctions exist and are
+exactly the objects (S) describes, and with $\delta(\alpha,\theta)=1$ the
+triple lies in the regime $0<\delta<L_V$ that (S) governs. Its eigenfunctions,
+however, decay according to the primitive coordinate, where the sharp almost
+Mathieu asymptotics fix the positive-tail lower limit at
+$\log\lambda-\delta(\alpha',\theta')=3-2=1$. Statement (S) requires
+$L_V(E)-\delta(\alpha,\theta)=3-1=2$. The positive-index subsequence alone
+already contradicts it, and the standard Diophantine frequencies have full
+measure.
+
+\paragraph{What this is and is not.} It is not a claim that the conjecture is
+wrong in substance. It is stated as the generalization of a theorem that is
+true for the almost Mathieu operator, and the counterexample exploits the one
+case the generalization did not intend: a potential whose stated period is not
+its shortest. Requiring $1$ to be the minimal period of $V$ --- or,
+equivalently, defining the phase exponent through the minimal fundamental
+period --- removes the counterexample at a stroke. What the paper establishes
+is that the hypothesis is necessary and that it is currently missing, not that
+the intended theorem fails. Proving the corrected statement is a separate
+problem and is not attempted here.
+
+A companion statement in the same family, asserting pure point spectrum with
+exponentially decaying eigenfunctions in the same regime, fails to the same
+construction at a smaller coupling, where the operator lands on the other side
+of the transition; that is the subject of a separate note and nothing below
+depends on it.
+
+The setting is the global theory of one-frequency quasiperiodic operators
+\cite{Avila_2015gt,Avila_2017sp,Avila_2009tt,Avila_2009al,Avila_2011ak},
+resting on the dichotomy between reducibility and nonuniform hyperbolicity
+\cite{Avila_2006ro}, whose
+arithmetic transitions descend from the Aubry--Andr\'e duality and the early
+work of Herman, Sarnak and others
+\cite{AubryAndre_1980ab,Herman_1983um,Sarnak_1982sb,Eliasson_1992fs}. For
+localization in this class, which is the regime the construction below lands
+in, see
+\cite{Jitomirskaya_1999mi,Jitomirskaya_1994al,Jitomirskaya_1998al,Bourgain_2000on,Bourgain_2002co,Bourgain_Book,Jitomirskaya_2016lr,Avila_2008ta,Liu_2015al,Ge_2023mj};
+for the opposite mechanism, in which fast approximation by periodic potentials
+rules out eigenvalues altogether, see Gordon \cite{Gordon_1976ps} and the
+singular continuous half of the almost Mathieu picture
+\cite{Gordon_1997da,Jitomirskaya_1994ow}. See
+\cite{Damanik_2016so,Simon_2000so} for surveys.
+
+\Cref{sec:convention} fixes the notation and shows that one operator is
+described by two arithmetic pairs. \Cref{sec:construction} builds the phase at
+which the two disagree, and \Cref{sec:asymptotics} derives the failure of (S).
+\Cref{sec:corrected} records the hypothesis that removes it.
+
+\section{The period convention and the two phase exponents}
+\label{sec:convention}
+
+Throughout, $\mathbb T=\mathbb R/\mathbb Z$ and
+$\lVert y\rVert_{\mathbb T}=\inf_{j\in\mathbb Z}|y-j|$. A frequency
+$\alpha$ is \emph{standard Diophantine} when there are $\gamma>0$ and
+$\tau\ge1$ with
+\begin{equation}
+  \label{eq:dioph}
+  \lVert h\alpha\rVert_{\mathbb T}\ \ge\ \gamma\,|h|^{-\tau}
+  \qquad (h\in\mathbb Z\setminus\{0\}).
+\end{equation}
+For $\tau>1$ the set of $\alpha$ satisfying \eqref{eq:dioph} for some
+$\gamma>0$ has full Lebesgue measure: the set of $\alpha$ with
+$\lVert h\alpha\rVert_{\mathbb T}<|h|^{-\tau}$ has measure $O(|h|^{-\tau})$,
+the sum over $h\ne0$ converges, and Borel--Cantelli leaves almost every
+$\alpha$ in only finitely many of these sets, which are then absorbed into
+$\gamma(\alpha)$.
+
+Write $V_\lambda$ for the potential \eqref{eq:V} at coupling $\lambda>0$; it
+is nonconstant, even and real-analytic on $\mathbb T$, and therefore
+admissible in (S) as it is stated. Its shortest period is
+$1/2$, and that single fact is the whole of the defect. Writing
+\begin{equation}
+  \label{eq:primitive}
+  \alpha'=2\alpha \bmod 1,
+  \qquad
+  \theta'=2\theta \bmod 1,
+\end{equation}
+we have, for every lattice site $n$,
+\begin{equation}
+  \label{eq:same-operator}
+  V_\lambda(\theta+n\alpha)
+  =2\lambda\cos\bigl(4\pi(\theta+n\alpha)\bigr)
+  =2\lambda\cos\bigl(2\pi(\theta'+n\alpha')\bigr),
+\end{equation}
+so $H_{V_\lambda,\alpha,\theta}$ is, on the same coordinates of
+$\ell^2(\mathbb Z)$ and with the same eigenfunctions, the almost Mathieu
+operator $H^{\mathrm{AMO}}_{\lambda,\alpha',\theta'}$ of coupling $\lambda$.
+
+Two arithmetic pairs therefore describe one operator: the pair
+$(\alpha,\theta)$ named by (S), and the primitive pair
+$(\alpha',\theta')$ that governs the operator's phase resonance. Since
+$\delta$ of \eqref{eq:delta} is built from its two arguments alone and never
+from the potential, nothing forces the two values to agree.
+\Cref{sec:construction} shows they need not: for every standard Diophantine
+$\alpha$ there is a phase at which
+\begin{equation*}
+  \delta(\alpha,\theta)=1
+  \qquad\text{while}\qquad
+  \delta(\alpha',\theta')=2 .
+\end{equation*}
+
+\section{A phase with two prescribed exponents}
+\label{sec:construction}
+
+The construction below is the whole of the counterexample. Prescribing
+\emph{both}
+exponents simultaneously is what the argument needs; producing a single
+Liouville-type phase would not separate them.
+
+Fix a standard Diophantine $\alpha$ with constants $\gamma,\tau$ as in
+\eqref{eq:dioph}. For a colour $a\in\{0,1\}$ and a signed index
+$m\in\mathbb Z$ put
+\begin{equation}
+  \label{eq:centers}
+  z_{a,m}=\frac a2-m\alpha \bmod 1,
+  \qquad
+  \kappa_0=1,\quad \kappa_1=2 .
+\end{equation}
+Colour zero carries the integer target and colour one the half-integer
+target; the exponents $\kappa_a$ are the two orders to be prescribed.
+
+\begin{lemma}[Separation of coloured centres]
+  \label{lem:separation}
+  Let $q$ be a denominator of a continued-fraction convergent of $\alpha$
+  and let $|n-m|<q$. If the two centres $z_{a,n}$ and $z_{b,m}$ are
+  distinct, then
+  \begin{equation}
+    \label{eq:sq}
+    \lVert z_{a,n}-z_{b,m}\rVert_{\mathbb T}\ \ge\ s_q:=A\,q^{-\tau},
+    \qquad
+    A=\min\{\tfrac12,\ \gamma\,2^{-\tau-1}\}>0 .
+  \end{equation}
+\end{lemma}
+
+\begin{proof}
+  For equal colours and $0<|n-m|<q$ the best-approximation property of
+  continued fractions gives
+  $\lVert z_{a,n}-z_{a,m}\rVert_{\mathbb T}
+   =\lVert(n-m)\alpha\rVert_{\mathbb T}>1/(2q)$.
+  For different colours write $h=n-m$. If $h\ne0$ then
+  \begin{equation*}
+    \lVert z_{0,n}-z_{1,m}\rVert_{\mathbb T}
+    =\bigl\lVert h\alpha-\tfrac12\bigr\rVert_{\mathbb T}
+    \ \ge\ \tfrac12\lVert 2h\alpha\rVert_{\mathbb T}
+    \ \ge\ \gamma\,2^{-\tau-1}|h|^{-\tau},
+  \end{equation*}
+  the middle step because $\lVert2y\rVert_{\mathbb T}\le2\lVert y-\tfrac12\rVert_{\mathbb T}$,
+  and the last by \eqref{eq:dioph}. If $h=0$ the two centres are $1/2$
+  apart. Since $|h|<q$, each bound is at least $A q^{-\tau}$.
+\end{proof}
+
+Fix once and for all
+\begin{equation}
+  \label{eq:Bc}
+  B=32,\qquad c=10^{-6},
+\end{equation}
+and for a positive index $n$ of colour $a$ define the compact annulus
+\begin{equation}
+  \label{eq:annulus}
+  \mathcal A_a(n)
+  =\bigl\{y\in\mathbb T:\
+    c\,e^{-\kappa_a n}\le\lVert y-z_{a,n}\rVert_{\mathbb T}\le e^{-\kappa_a n}
+  \bigr\}.
+\end{equation}
+The outer radius prescribes an approximation of order $\kappa_a$ at index
+$n$; the inner radius prevents the order from being exceeded, which is what
+makes the resulting exponents exact rather than merely bounded below.
+
+\begin{lemma}[Child selection]
+  \label{lem:child}
+  Let $Q$ be a sufficiently large convergent denominator of $\alpha$, let
+  \begin{equation*}
+    \Bigl\lceil\frac QB\Bigr\rceil\le\ell<\Bigl\lfloor\frac{2Q}B\Bigr\rfloor,
+  \end{equation*}
+  let $\mathcal A_b(\ell)$ be the current parent, and put
+  $M=\lfloor Q/2\rfloor$. Then for either colour $a$ and every
+  sufficiently large later convergent denominator $q$, chosen also with
+  $q/B>M$, there is an index
+  \begin{equation}
+    \label{eq:child-index}
+    \Bigl\lceil\frac qB\Bigr\rceil\le n<\Bigl\lfloor\frac{2q}B\Bigr\rfloor
+  \end{equation}
+  with
+  \begin{equation}
+    \label{eq:nested}
+    \mathcal A_a(n)\subset\mathcal A_b(\ell)
+  \end{equation}
+  and such that every $y\in\mathcal A_a(n)$ satisfies
+  \begin{equation}
+    \label{eq:protected}
+    \lVert y-z_{u,m}\rVert_{\mathbb T}\ \ge\ c\,e^{-\kappa_u|m|}
+    \qquad
+    \bigl(u\in\{0,1\},\ M\le|m|<\lfloor q/2\rfloor\bigr).
+  \end{equation}
+\end{lemma}
+
+For the selected pair $(u,m)=(a,n)$ itself, \eqref{eq:protected} is the
+inner inequality of \eqref{eq:annulus}, so the child's own centre is not an
+obstruction.
+
+\begin{proof}
+  Write $r=e^{-\kappa_b\ell}$ for the parent's outer radius and trim the
+  parent to
+  \begin{equation}
+    \label{eq:trimmed}
+    \mathcal U=\bigl\{y:2cr<\lVert y-z_{b,\ell}\rVert_{\mathbb T}<(1-c)r\bigr\},
+  \end{equation}
+  a set of length $2(1-3c)r$. Irrational rotations are uniquely ergodic,
+  uniformly in the initial point of the orbit block, so the block of
+  consecutive candidate indices \eqref{eq:child-index} contains at least
+  \begin{equation}
+    \label{eq:count}
+    \frac{(1-3c)\,r\,q}{B}
+  \end{equation}
+  centres lying in $\mathcal U$ once $q$ is large enough. Enlarging $q$
+  further makes the largest child radius at most $e^{-q/B}<cr$, so a child
+  centred in $\mathcal U$ satisfies \eqref{eq:nested}.
+
+  Call a candidate \emph{bad} when its child meets one of the obstacle balls
+  $B(z_{u,m},\,c\,e^{-\kappa_u|m|})$ of \eqref{eq:protected} other than its
+  own inner ball. Candidate indices obey $n<2q/B$ and obstacle indices
+  $|m|<q/2$, so
+  \begin{equation}
+    \label{eq:index-gap}
+    0<|n-m|<\frac{2q}{B}+\frac q2<q
+  \end{equation}
+  unless the two indices coincide, and the coinciding case with opposite
+  colours is covered by \Cref{lem:separation} as well. Choose $q$ so that the
+  child radius is below $s_q/4$; by \Cref{lem:separation} an obstacle meeting
+  the child must then have radius at least $3s_q/4$, and since obstacle radii
+  decay exponentially in $|m|$ only $O(\log q)$ signed obstacles can do so.
+
+  Candidate centres of the fixed colour are more than $1/(2q)$ apart, so a
+  single obstacle of radius $\rho$ spoils at most $4q(\rho+e^{-q/B})+1$
+  candidates. Summing over both colours and both signs,
+  \begin{equation}
+    \label{eq:bad}
+    \#\{\text{bad candidates}\}
+    \ \le\ C_0\,q\,e^{-M}+O\bigl(q e^{-q/B}\log q+\log q\bigr),
+  \end{equation}
+  with $C_0$ independent of $Q$ and $q$. Because $\ell<2Q/B$, $\kappa_b\le2$
+  and $M=\lfloor Q/2\rfloor$,
+  \begin{equation}
+    \label{eq:ratio}
+    \frac{e^{-M}}{r}
+    \ \le\ \exp\Bigl(-\frac Q2+\frac{4Q}{B}+O(1)\Bigr)
+    \ =\ e^{-3Q/8+O(1)} .
+  \end{equation}
+  Taking the initial parent scale large enough makes the first term of
+  \eqref{eq:bad} smaller than half the count \eqref{eq:count}; for that fixed
+  parent the remaining terms of \eqref{eq:bad} are $o(rq)$ as $q\to\infty$.
+  Hence some candidate is not bad, and it is the required child.
+\end{proof}
+
+\begin{proposition}[Two prescribed exact orders]
+  \label{prop:two-orders}
+  Let $\alpha$ satisfy \eqref{eq:dioph}. There is $x\in\mathbb T$ with
+  \begin{equation}
+    \label{eq:order1}
+    \limsup_{|m|\to\infty}
+      \frac{-\log\lVert x+m\alpha\rVert_{\mathbb T}}{|m|}=1
+  \end{equation}
+  and
+  \begin{equation}
+    \label{eq:order2}
+    \limsup_{|m|\to\infty}
+      \frac{-\log\lVert x+m\alpha-\tfrac12\rVert_{\mathbb T}}{|m|}=2,
+  \end{equation}
+  both orders being attained along subsequences of positive indices.
+\end{proposition}
+
+\begin{proof}
+  Begin with a sufficiently large annulus of colour zero and apply
+  \Cref{lem:child} repeatedly, alternating the requested colours
+  $0,1,0,1,\dots$ and obtaining convergent denominators $Q_1<Q_2<\cdots$.
+  This produces nested nonempty compact annuli, so their intersection
+  contains a point $x$; put $M_t=\lfloor Q_t/2\rfloor\to\infty$.
+
+  The protected windows $M_t\le|m|<M_{t+1}$ of \eqref{eq:protected} cover
+  every sufficiently large signed integer, so
+  \begin{equation}
+    \label{eq:lower}
+    \lVert x-z_{a,m}\rVert_{\mathbb T}\ \ge\ c\,e^{-\kappa_a|m|}
+    \qquad(a=0,1)
+  \end{equation}
+  for all large $|m|$, which after applying $-|m|^{-1}\log$ bounds both
+  upper limits from above by $\kappa_a$, the constant $c$ disappearing in
+  the limit. Membership in the infinitely many selected annuli of each
+  colour gives the matching
+  $\lVert x-z_{a,n_t}\rVert_{\mathbb T}\le e^{-\kappa_a n_t}$ along
+  subsequences of positive indices, hence the lower bounds. With
+  $z_{0,m}=-m\alpha$ and $z_{1,m}=\tfrac12-m\alpha$ these are exactly
+  \eqref{eq:order1} and \eqref{eq:order2}.
+\end{proof}
+
+\begin{corollary}
+  \label{cor:exponents}
+  Let $\alpha$ satisfy \eqref{eq:dioph} and let $\theta$ satisfy
+  $2\theta=x\bmod1$ for the $x$ of \Cref{prop:two-orders}. Then, with
+  $\alpha',\theta'$ as in \eqref{eq:primitive},
+  \begin{equation}
+    \label{eq:two-deltas}
+    \delta(\alpha,\theta)=1,
+    \qquad
+    \delta(\alpha',\theta')=2,
+  \end{equation}
+  and $\alpha'$ is again standard Diophantine.
+\end{corollary}
+
+\begin{proof}
+  Since $2\theta=x$, \eqref{eq:delta} and \eqref{eq:order1} give
+  $\delta(\alpha,\theta)=1$. For the primitive pair use the exact circle
+  identity
+  \begin{equation}
+    \label{eq:doubling}
+    \lVert 2y\rVert_{\mathbb T}
+    =2\min\bigl\{\lVert y\rVert_{\mathbb T},\
+                 \lVert y-\tfrac12\rVert_{\mathbb T}\bigr\},
+  \end{equation}
+  applied at $y=x+k\alpha$. Because $2\theta'+k\alpha'=2(x+k\alpha)$ modulo
+  $1$,
+  \begin{equation*}
+    \delta(\alpha',\theta')
+    =\max\left\{
+      \limsup_{k\to+\infty}\frac{-\log\lVert x+k\alpha\rVert_{\mathbb T}}{k},\
+      \limsup_{k\to+\infty}
+        \frac{-\log\lVert x+k\alpha-\tfrac12\rVert_{\mathbb T}}{k}
+    \right\}=2,
+  \end{equation*}
+  the additive $-\log2/k$ from \eqref{eq:doubling} vanishing in the limit and
+  the two upper limits being $1$ and $2$ by \Cref{prop:two-orders}. Finally
+  $\lVert k\alpha'\rVert_{\mathbb T}=\lVert2k\alpha\rVert_{\mathbb T}
+   \ge\gamma(2|k|)^{-\tau}$, so $\alpha'$ satisfies \eqref{eq:dioph} with
+  constant $\gamma2^{-\tau}$.
+\end{proof}
+
+\begin{remark}
+  \label{rem:index-set}
+  The two exponents are the same under either index convention. Sources
+  differ on whether the upper limit in \eqref{eq:delta} is taken over
+  $k\to+\infty$ or over $|k|\to\infty$, and in a paper about a convention
+  that difference cannot be left implicit. \Cref{prop:two-orders} settles it:
+  the lower bounds come from subsequences of positive indices, so they hold
+  for the one-sided reading, while \eqref{eq:lower} bounds the quotient above
+  for every sufficiently large $|m|$ of either sign, so the two-sided upper
+  limit is no larger. Both readings therefore return
+  $\delta(\alpha,\theta)=1$ and $\delta(\alpha',\theta')=2$, and nothing below
+  depends on the choice.
+\end{remark}
+
+\begin{proposition}[The Lyapunov exponent is carried across]
+  \label{prop:lyapunov}
+  For every $\lambda>0$ and every energy $E$,
+  \begin{equation}
+    \label{eq:lyap}
+    L_{V_\lambda,\alpha}(E)=L_{\mathrm{AMO},\alpha'}(E),
+  \end{equation}
+  where the right-hand side is the Lyapunov exponent of the almost Mathieu
+  cocycle of coupling $\lambda$ and frequency $\alpha'$.
+\end{proposition}
+
+\begin{proof}
+  By \eqref{eq:same-operator} the two transfer matrices agree after doubling
+  the base point: if $A^{V_\lambda,\alpha}_E(N,t)$ and
+  $A^{\mathrm{AMO},\alpha'}_E(N,s)$ denote the $N$-step matrices, then
+  $A^{V_\lambda,\alpha}_E(N,t)=A^{\mathrm{AMO},\alpha'}_E(N,2t)$ for every
+  $t$. The doubling map $t\mapsto2t$ preserves Haar measure on $\mathbb T$,
+  so the two integrals of $N^{-1}\log\lVert A_E(N,\cdot)\rVert$ coincide for
+  every $N$, and so do their limits.
+\end{proof}
+
+\section{The wrong tail exponent at the larger coupling}
+\label{sec:asymptotics}
+
+Take $\lambda=e^{3}$ in \eqref{eq:V} and let $\alpha,\theta$ be as in
+\Cref{cor:exponents}. We use the sharp almost Mathieu results of
+Jitomirskaya and Liu \cite{Jitomirskaya_2024ur}, whose normalization is fixed
+by the transfer matrix
+\begin{equation}
+  \label{eq:amo-normalization}
+  A(t)=
+  \begin{pmatrix}
+    E-2\lambda\cos(2\pi t) & -1\\
+    1 & 0
+  \end{pmatrix},
+\end{equation}
+the convention in which \eqref{eq:same-operator} was written. At this
+coupling the operator sits on the localized side of the transition, so the
+failure is quantitative rather than spectral: the eigenfunctions (S)
+describes do exist, and it is the rate assigned to them that is wrong.
+
+\begin{theorem}
+  \label{thm:main}
+  Statement (S) is false. For $V_{e^{3}}(t)=2e^{3}\cos(4\pi t)$ and every
+  standard Diophantine $\alpha$ there is a phase $\theta$ for which
+  $H_{V,\alpha,\theta}$ is Anderson localized in the regime (S) describes,
+  and every $\ell^2$ eigenfunction satisfies
+  \begin{equation*}
+    \liminf_{|n|\to\infty}\frac{-\log\lVert U(n)\rVert}{|n|}\ \le\ 1,
+  \end{equation*}
+  whereas (S) asserts the value
+  $L_{V,\alpha}(E)-\delta(\alpha,\theta)=2$.
+\end{theorem}
+
+\begin{proof}
+  Fix $\theta$ as in \Cref{cor:exponents}, so that
+  $\delta(\alpha,\theta)=1$ and $\delta(\alpha',\theta')=2$. By
+  \eqref{eq:same-operator} the operator is
+  $H^{\mathrm{AMO}}_{e^{3},\alpha',\theta'}$, and
+  \begin{equation}
+    \label{eq:loc}
+    \log\lambda=3>2=\delta(\alpha',\theta'),
+  \end{equation}
+  so Theorem 1.1 of \cite{Jitomirskaya_2024ur} gives Anderson localization:
+  the spectrum is pure point with exponentially decaying eigenfunctions, and
+  it is nonempty, so eigenvalues and eigenfunctions exist. By
+  \Cref{prop:lyapunov} and the almost Mathieu value
+  $L=\max\{\log\lambda,0\}$, which holds at every energy of the spectrum
+  \cite{Bourgain_2002co,Damanik_2016so} and is bounded below already by
+  Herman's subharmonicity estimate \cite{Herman_1983um},
+  $L_{V,\alpha}(E)=\log\lambda=3$ at every spectral energy; with
+  $\delta(\alpha,\theta)=1$ the pair $(V,\alpha,\theta)$
+  lies in the regime $0<\delta<L_V$ that (S) governs.
+
+  The eigenfunction asymptotics are fixed in the primitive coordinate.
+  Corollary 1.6(ii) of \cite{Jitomirskaya_2024ur}, under the hypotheses of its
+  Theorem 1.2, gives for every eigenfunction
+  \begin{equation}
+    \label{eq:true-tail}
+    \liminf_{n\to+\infty}\frac{-\log\lVert U(n)\rVert}{n}
+    =\log\lambda-\delta(\alpha',\theta')=3-2=1,
+  \end{equation}
+  and eigenfunctions are not transformed by \eqref{eq:same-operator}, so the
+  two-sided lower limit is at most $1$. Statement (S) requires instead
+  \begin{equation}
+    \label{eq:claimed-tail}
+    \liminf_{|n|\to\infty}\frac{-\log\lVert U(n)\rVert}{|n|}
+    =L_{V,\alpha}(E)-\delta(\alpha,\theta)=3-1=2 .
+  \end{equation}
+  Equations \eqref{eq:true-tail} and \eqref{eq:claimed-tail} are
+  incompatible, and the positive-index subsequence in \eqref{eq:true-tail}
+  already suffices. The standard Diophantine frequencies have full Lebesgue
+  measure, so the frequencies exhibited here cannot be absorbed into the null
+  set that an ``almost every $\alpha$'' qualifier would permit.
+\end{proof}
+
+\section{The corrected statement}
+\label{sec:corrected}
+
+\begin{remark}
+  \label{rem:repairs}
+  Either of the following restores the intended content of (S). Require $1$
+  to be the shortest period of $V$; then $(\alpha,\theta)=(\alpha',\theta')$
+  in the notation of \eqref{eq:primitive} and the two exponents coincide by
+  construction. Alternatively, replace $\delta$ in \eqref{eq:delta} by a
+  resonance exponent invariant under the finite covering reparametrizations
+  $t\mapsto kt$ and computed over every symmetry centre of $V$, which for
+  $V_\lambda$ returns the value $2$ that governs the operator.
+\end{remark}
+
+The repaired statement is not addressed here, and nothing above bears on
+whether it is true. What \Cref{thm:main} establishes is that the hypothesis
+is necessary and that it is currently absent: the almost Mathieu theorem of
+\cite{Jitomirskaya_2024ur,Jitomirskaya_2023od} that (S) generalizes is stated
+for a potential whose shortest period is $1$, and the generalization to
+arbitrary even analytic $V$ carried $\delta$ across without carrying that
+normalization with it.
+
+\section*{Acknowledgments}
+
+Z.\ Y.\ acknowledges support from the Strategic Priority Research Program of the
+Chinese Academy of Sciences under Grant No.~XDB1680102. Z.\ Y.\ also
+acknowledges support by National Natural Science Foundation of China (Grant
+No.~12247101). We also acknowledge Gewu Intelligence Lab for providing the
+collaborative research environment in which this project was developed.
+
+Large language models were used substantively in this work: OpenAI GPT-5.6 Sol
+in solving the problem, including the formulation of arguments and the
+derivation of intermediate steps, and Anthropic Claude Opus~5 in surveying the
+literature, in verifying the period convention against the source statements,
+in checking every attribution against the cited sources, and in drafting and
+revising the manuscript. The author specified the problem,
+guided the approach to be taken, checked every argument and result they
+produced, and takes full responsibility for the content of this manuscript.
+
+\bibliographystyle{amsplain}
+\bibliography{references,unverified}
+
+\end{document}

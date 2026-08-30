@@ -1,0 +1,67 @@
+\providecommand{\bysame}{\leavevmode\hbox to3em{\hrulefill}\thinspace}
+\providecommand{\MR}{\relax\ifhmode\unskip\space\fi MR }
+% \MRhref is called by the amsart/book/proc definition of \MR.
+\providecommand{\MRhref}[2]{%
+  \href{http://www.ams.org/mathscinet-getitem?mr=#1}{#2}
+}
+\providecommand{\href}[2]{#2}
+\begin{thebibliography}{10}
+
+\bibitem{Agmon_Book}
+Shmuel Agmon, \emph{Lectures on exponential decay of solutions of second-order elliptic equations: Bounds on eigenfunctions of n-body schrodinger operations. (mn-29)}, Princeton University Press, December 1983.
+
+\bibitem{Baez_1992ro}
+John~C Baez and Zhengfang Zhou, \emph{Renormalized oscillator hamiltonians}, Advances in Mathematics \textbf{92} (1992), no.~1, 106–127.
+
+\bibitem{Bahouri_2023ss}
+Hajer Bahouri, Davide Barilari, Isabelle Gallagher, and Matthieu Léautaud, \emph{Spectral summability for the quartic oscillator with applications to the engel group}, Journal of Spectral Theory \textbf{13} (2023), no.~2, 623–706.
+
+\bibitem{Bender_1969ao}
+Carl~M. Bender and Tai~Tsun Wu, \emph{Anharmonic oscillator}, Physical Review \textbf{184} (1969), no.~5, 1231--1260.
+
+\bibitem{Farouki_2012tb}
+Rida~T. Farouki, \emph{The bernstein polynomial basis: A centennial retrospective}, Computer Aided Geometric Design \textbf{29} (2012), no.~6, 379–419.
+
+\bibitem{Fournais_Book}
+Søren Fournais and Bernard Helffer, \emph{Spectral methods in surface superconductivity}, Birkhäuser Boston, 2010.
+
+\bibitem{HELFFER_2004mb}
+B~HELFFER and A~MORAME, \emph{Magnetic bottles for the neumann problem: curvature effects in the case of dimension 3 (general case)}, Annales Scientifiques de l’École Normale Supérieure \textbf{37} (2004), no.~1, 105–170.
+
+\bibitem{Helffer_2010sp}
+B.~Helffer and M.~Persson, \emph{Spectral properties of higher order anharmonic oscillators}, Journal of Mathematical Sciences \textbf{165} (2010), no.~1, 110–126.
+
+\bibitem{Helffer_2010tm}
+Bernard Helffer, \emph{The {Montgomery} model revisited}, Colloquium Mathematicum \textbf{118} (2010), no.~2, 391--400.
+
+\bibitem{Helffer_2024oc}
+Bernard Helffer and Matthieu Leautaud, \emph{On critical points of eigenvalues of the {Montgomery} family of quartic oscillators}, Indiana University Mathematics Journal \textbf{73} (2024), no.~6, 2073–2133.
+
+\bibitem{Helffer_1996sa}
+Bernard Helffer and Abderemane Mohamed, \emph{Semiclassical analysis for the ground state energy of a schrödinger operator with magnetic wells}, Journal of Functional Analysis \textbf{138} (1996), no.~1, 40–81.
+
+\bibitem{Kato_Book}
+Tosio Kato, \emph{Perturbation theory for linear operators}, Springer Berlin Heidelberg, 1995.
+
+\bibitem{Montgomery_1995ht}
+Richard Montgomery, \emph{Hearing the zero locus of a magnetic field}, Communications in Mathematical Physics \textbf{168} (1995), no.~3, 651–675.
+
+\bibitem{Moore_Book}
+Ramon~E. Moore, R.~Baker Kearfott, and Michael~J. Cloud, \emph{Introduction to interval analysis}, Society for Industrial and Applied Mathematics, January 2009.
+
+\bibitem{Pan_2002so}
+Xing-Bin Pan and Keng-Huat Kwek, \emph{Schrödinger operators with non-degenerately vanishing magnetic fields in bounded domains}, Transactions of the American Mathematical Society \textbf{354} (2002), no.~10, 4201--4227.
+
+\bibitem{ReedSimonIV}
+Michael Reed and Barry Simon, \emph{Methods of modern mathematical physics {IV}: Analysis of operators}, Academic Press, New York, 1978.
+
+\bibitem{Rump_2010vm}
+Siegfried~M. Rump, \emph{Verification methods: Rigorous results using floating-point arithmetic}, Acta Numerica \textbf{19} (2010), 287–449.
+
+\bibitem{Simon_1970ca}
+Barry Simon, \emph{Coupling constant analyticity for the anharmonic oscillator}, Annals of Physics \textbf{58} (1970), no.~1, 76--136, With an appendix by A. Dicke.
+
+\bibitem{Turbiner_2021ao}
+Alexander~V Turbiner and J~C~del Valle, \emph{Anharmonic oscillator: a solution}, Journal of Physics A: Mathematical and Theoretical \textbf{54} (2021), no.~29, 295204.
+
+\end{thebibliography}
