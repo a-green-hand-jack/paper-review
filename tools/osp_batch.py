@@ -57,6 +57,7 @@ def make_workspace(run_dir: Path, paper: Path, venue: str) -> Path:
     session["venue"] = {"name": venue, "year": "", "source_url": "", "criteria_source": "pending"}
     (workspace / ".brain" / "session.json").write_text(json.dumps(session, indent=2) + "\n")
     shutil.copytree(ROOT / ".claude", workspace / ".claude")
+    shutil.copytree(ROOT / "docs", workspace / "docs")
     shutil.copy2(ROOT / ".mcp.json", workspace / ".mcp.json")
     shutil.copy2(ROOT / "AGENTS.md", workspace / "AGENTS.md")
     return workspace
