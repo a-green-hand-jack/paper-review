@@ -52,17 +52,21 @@ def make_workspace(run_dir: Path, paper: Path) -> Path:
     return workspace
 
 
-def resolve_model(model: str) -> tuple[str, str]:
-    if model == "gpt-5.6-sol-medium":
+def resolve_model(llm: str, variant: str | None) -> tuple[str, str | None]:
+    if llm == "gpt-5.6-sol-medium":
         return "openai/gpt-5.6-sol", "medium"
-    raise ValueError("unsupported model; currently supported: gpt-5.6-sol-medium")
+    if "/" not in llm:
+        raise ValueError("--llm must be provider/model, for example openai/gpt-5.6-sol")
+    return llm, variant
 
 
-def run_one(paper: Path, venue: str, model: str, execute: bool) -> int:
+def run_one(paper: Path, venue: str, llm: str, variant: str | None, harness: str, execute: bool) -> int:
     name = paper_name(paper)
     run_dir = TRAIL_ROOT / name / timestamp()
     workspace = run_dir / "workspace"
-    provider_model, variant = resolve_model(model)
+    if harness != "opencode":
+        raise ValueError("unsupported --harness; currently supported: opencode")
+    provider_model, resolved_variant = resolve_model(llm, variant)
     command = [
         "opencode",
         "run",
@@ -70,8 +74,10 @@ def run_one(paper: Path, venue: str, model: str, execute: bool) -> int:
         str(workspace),
         "--model",
         provider_model,
-        "--variant",
-        variant,
+    ]
+    if resolved_variant:
+        command += ["--variant", resolved_variant]
+    command += [
         "Use Open ScholarPeer to complete the full review of the paper in this workspace. "
         f"The review venue is {venue}. Execute the numbered OSP phases in order; do not "
         "only report the dispatcher status, and do not process any other paper.",
@@ -86,8 +92,10 @@ def run_one(paper: Path, venue: str, model: str, execute: bool) -> int:
         "paper": str(paper.relative_to(ROOT)),
         "paper_sha256": sha256(paper),
         "venue": venue,
-        "model": model,
-        "provider": "openai",
+        "llm": llm,
+        "variant": resolved_variant,
+        "harness": harness,
+        "provider": provider_model.split("/", 1)[0],
         "started_at": datetime.now(timezone.utc).isoformat(),
         "status": "created",
         "trail": str(run_dir.relative_to(ROOT)),
@@ -118,22 +126,25 @@ def run_one(paper: Path, venue: str, model: str, execute: bool) -> int:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--venue", required=True, help="review venue, for example arXiv-only")
-    parser.add_argument("--model", default="gpt-5.6-sol-medium")
-    parser.add_argument("--paper", help="relative paper PDF; omit to process all papers")
+    parser.add_argument("--venue", default="arxiv", help="review venue (default: arxiv)")
+    parser.add_argument("--llm", default="openai/gpt-5.6-sol", help="provider/model")
+    parser.add_argument("--variant", default="medium", help="model variant, or omit it")
+    parser.add_argument("--harness", default="opencode", help="agent harness (default: opencode)")
+    parser.add_argument("--paper", action="append", help="relative paper PDF; repeat for multiple papers")
+    parser.add_argument("--all", action="store_true", help="process all manuscript PDFs")
     parser.add_argument("--execute", action="store_true", help="actually invoke opencode")
     args = parser.parse_args()
-    selected = papers()
-    if args.paper:
-        selected = [ROOT / args.paper]
-        if selected[0] not in papers():
-            parser.error(f"not a manuscript PDF under papers/: {args.paper}")
+    available = papers()
+    selected = available if args.all or not args.paper else [ROOT / path for path in args.paper]
+    invalid = [path for path in selected if path not in available]
+    if invalid:
+        parser.error("not manuscript PDFs under papers/: " + ", ".join(str(path) for path in invalid))
     if not selected:
         parser.error("no manuscript PDFs found under papers/")
     failures = 0
     for path in selected:
         try:
-            failures += run_one(path, args.venue, args.model, args.execute) != 0
+            failures += run_one(path, args.venue, args.llm, args.variant, args.harness, args.execute) != 0
         except Exception as error:
             failures += 1
             print(f"FAILED {path.relative_to(ROOT)}: {error}", file=sys.stderr)

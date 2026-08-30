@@ -24,15 +24,18 @@ should be handled accordingly.
 Preview all current manuscript runs without calling the model:
 
 ```bash
-python3 tools/osp_batch.py --venue arXiv-only
+python3 tools/osp_batch.py --venue arxiv
 ```
 
 Run all manuscripts sequentially:
 
 ```bash
 python3 tools/osp_batch.py \
-  --venue arXiv-only \
-  --model gpt-5.6-sol-medium \
+  --venue arxiv \
+  --llm openai/gpt-5.6-sol \
+  --variant medium \
+  --harness opencode \
+  --all \
   --execute
 ```
 
@@ -41,11 +44,15 @@ Run one paper:
 ```bash
 python3 tools/osp_batch.py \
   --paper papers/solution-p8534/paper/main.pdf \
-  --venue arXiv-only \
+  --venue arxiv \
+  --llm openai/gpt-5.6-sol \
+  --variant medium \
   --execute
 ```
 
-The requested model name `gpt-5.6-sol-medium` is mapped to the OpenCode model
+The CLI accepts `--llm`, `--variant`, `--harness`, `--paper`, and `--venue` so
+an OpenCode TUI agent can construct exactly the run it wants. The shorthand
+`gpt-5.6-sol-medium` is also accepted through `--llm` and maps to
 `openai/gpt-5.6-sol` with variant `medium`.
 
 ## Notes
