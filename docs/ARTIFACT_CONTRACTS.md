@@ -16,3 +16,12 @@ workspace.
 
 All raw artifacts use the universal `Method`, `Output`, and `Provenance`
 sections defined by the OSP project rules.
+
+## Domain-adaptive branching
+
+Onboarding also classifies `session.json.paper.review_mode`
+(`theoretical` / `empirical` / `other`) and `paper.field`. This selects which
+generic fallback guidelines apply and how `01_structured_summary.md` and
+`04_missing_baselines.md` are structured, so a pure math/physics proof paper
+is not forced into ML-style baseline/dataset/ablation framing. See the OSP
+fork's `docs/ARTIFACT_CONTRACTS.md` for the full per-step branching table.
