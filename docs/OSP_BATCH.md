@@ -97,4 +97,7 @@ python3 tools/osp_compare.py \
 The comparison command reviews all three versions in parallel with identical
 settings, then writes `comparison.md` and one copy of each final review under
 `osp-trails/erdos973-comparison/<timestamp>/`. The report records the expected
-ordering `v1 < v2 < v3` and includes v1-to-v2 and v2-to-v3 diffs.
+ordering `v1 < v2 < v3`, extracts recommendation and confidence signals, and
+includes v1-to-v2 and v2-to-v3 diffs. The structured ordering check is
+diagnostic only: equal reviewer outcomes are reported as tied rather than
+being converted into a fabricated quality ranking.

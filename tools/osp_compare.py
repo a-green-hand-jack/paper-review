@@ -7,6 +7,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 import difflib
 from pathlib import Path
+import re
 import subprocess
 import sys
 
@@ -34,6 +35,47 @@ def review_version(paper: Path, args: argparse.Namespace) -> tuple[str, int, str
     if result.returncode:
         return paper.name, result.returncode, result.stdout + result.stderr
     return paper.name, 0, str(latest_trail(paper))
+
+
+def review_signals(text: str) -> tuple[str, int | None]:
+    recommendation_match = re.search(
+        r"^## (?:Decision )?Recommendation\s*$([\s\S]*?)(?=^## |\Z)",
+        text,
+        re.MULTILINE,
+    )
+    recommendation = "unknown"
+    if recommendation_match:
+        recommendation_line = next(
+            (line.strip() for line in recommendation_match.group(1).splitlines() if line.strip()),
+            "",
+        )
+        recommendation = recommendation_line.strip("*.").lower()
+
+    confidence_match = re.search(r"^## Confidence\s*$([\s\S]*?)^##? ", text, re.MULTILINE)
+    confidence = None
+    if confidence_match:
+        value_match = re.search(r"\b([1-5])\s*/\s*5\b", confidence_match.group(1))
+        if value_match:
+            confidence = int(value_match.group(1))
+    return recommendation, confidence
+
+
+def ordering_status(signals: list[tuple[str, int | None]]) -> str:
+    recommendation_ranks = {
+        "reject": 0,
+        "major revision": 1,
+        "minor revision": 2,
+        "accept": 3,
+    }
+    ranks = [recommendation_ranks.get(recommendation, -1) for recommendation, _ in signals]
+    confidences = [confidence for _, confidence in signals]
+    if -1 in ranks or any(value is None for value in confidences):
+        return "inconclusive (missing structured signal)"
+    if ranks[0] < ranks[1] < ranks[2] and confidences[0] <= confidences[1] <= confidences[2]:
+        return "strictly increasing"
+    if ranks[0] > ranks[1] or ranks[1] > ranks[2] or confidences[0] > confidences[1] or confidences[1] > confidences[2]:
+        return "not increasing"
+    return "inconclusive (tied reviewer outcomes)"
 
 
 def main() -> int:
@@ -78,6 +120,7 @@ def main() -> int:
     comparison = TRAIL_ROOT / "erdos973-comparison" / datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     comparison.mkdir(parents=True)
     reviews = {label: (trail / "brain" / "review" / "final_review.md").read_text() for label, trail in trails.items()}
+    signals = {label: review_signals(reviews[label]) for label in ("v1", "v2", "v3")}
     for label, text in reviews.items():
         (comparison / f"{label}_review.md").write_text(text)
     report = [
@@ -94,7 +137,19 @@ def main() -> int:
         "",
         "The expected quality progression is `v1 < v2 < v3`.",
         "Inspect the decision, confidence, strengths, weaknesses, and questions below.",
+        "",
+        "## Structured Ordering Check",
+        "",
+        "The outcome score is only a reviewer signal: accept=3, minor revision=2, major revision=1, reject=0.",
+        "It must not be treated as a scientific quality score without a paper-specific rubric.",
+        "",
+        "| Version | Recommendation | Confidence |",
+        "| --- | --- | --- |",
     ]
+    for label in ("v1", "v2", "v3"):
+        recommendation, confidence = signals[label]
+        report.append(f"| {label} | {recommendation} | {confidence}/5 |" if confidence is not None else f"| {label} | {recommendation} | unknown |")
+    report += ["", f"Ordering status: **{ordering_status([signals[label] for label in ('v1', 'v2', 'v3')])}**."]
     for label in ("v1", "v2", "v3"):
         report += ["", f"## {label}", "", reviews[label]]
     report += ["", "## v1 to v2 Diff", "", "```diff"]
