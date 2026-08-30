@@ -6,12 +6,13 @@ import argparse
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 import difflib
+import json
 from pathlib import Path
 import re
 import subprocess
 import sys
 
-from osp_batch import ROOT, TRAIL_ROOT, paper_name
+from osp_batch import ROOT, TRAIL_ROOT, osp_provenance, paper_name, resolve_model, sha256
 
 
 def latest_trail(paper: Path) -> Path:
@@ -19,6 +20,59 @@ def latest_trail(paper: Path) -> Path:
     if not candidates:
         raise FileNotFoundError(f"no final review found for {paper}")
     return candidates[-1].parents[2]
+
+
+def validate_reused_trail(trail: Path, paper: Path, args: argparse.Namespace) -> None:
+    manifest_path = trail / "manifest.json"
+    if not manifest_path.is_file():
+        raise FileNotFoundError(f"manifest.json missing from {trail}")
+    manifest = json.loads(manifest_path.read_text())
+    if not isinstance(manifest, dict):
+        raise ValueError(f"manifest.json must contain an object: {manifest_path}")
+    expected_model, expected_variant = resolve_model(args.llm, args.variant)
+    try:
+        manifest_model, manifest_variant = resolve_model(
+            manifest.get("llm", ""), manifest.get("variant")
+        )
+    except (TypeError, ValueError) as error:
+        raise ValueError(f"invalid model settings in {manifest_path}: {error}") from error
+    expected = {
+        "paper_sha256": sha256(paper),
+        "venue": args.venue,
+        "model": expected_model,
+        "variant": expected_variant,
+        "harness": args.harness,
+    }
+    actual = {
+        "paper_sha256": manifest.get("paper_sha256"),
+        "venue": manifest.get("venue"),
+        "model": manifest_model,
+        "variant": manifest_variant,
+        "harness": manifest.get("harness"),
+    }
+    mismatches = [
+        f"{key}: expected {value!r}, found {actual.get(key)!r}"
+        for key, value in expected.items()
+        if actual.get(key) != value
+    ]
+    if manifest.get("status") != "completed" or manifest.get("returncode") != 0:
+        mismatches.append(
+            f"status: expected completed with returncode 0, found "
+            f"{manifest.get('status')!r} with returncode {manifest.get('returncode')!r}"
+        )
+    current_osp = osp_provenance()
+    recorded_osp = manifest.get("osp")
+    if not isinstance(recorded_osp, dict):
+        mismatches.append("osp provenance: missing or invalid")
+    elif recorded_osp.get("fork_commit") != current_osp.get("fork_commit"):
+        mismatches.append(
+            f"osp fork commit: expected {current_osp.get('fork_commit')!r}, "
+            f"found {recorded_osp.get('fork_commit')!r}"
+        )
+    if current_osp.get("fork_dirty"):
+        mismatches.append("osp fork: current working tree is dirty")
+    if mismatches:
+        raise ValueError(f"reused trail does not match requested settings: {'; '.join(mismatches)}")
 
 
 def review_version(paper: Path, args: argparse.Namespace) -> tuple[str, int, str]:
@@ -39,9 +93,9 @@ def review_version(paper: Path, args: argparse.Namespace) -> tuple[str, int, str
 
 def review_signals(text: str) -> tuple[str, int | None]:
     recommendation_match = re.search(
-        r"^## (?:Decision )?Recommendation\s*$([\s\S]*?)(?=^## |\Z)",
+        r"^##\s+(?:Decision\s+)?Recommendation\s*$([\s\S]*?)(?=^##\s|\Z)",
         text,
-        re.MULTILINE,
+        re.MULTILINE | re.IGNORECASE,
     )
     recommendation = "unknown"
     if recommendation_match:
@@ -51,10 +105,18 @@ def review_signals(text: str) -> tuple[str, int | None]:
         )
         recommendation = recommendation_line.strip("*.").lower()
 
-    confidence_match = re.search(r"^## Confidence\s*$([\s\S]*?)^##? ", text, re.MULTILINE)
+    confidence_match = re.search(
+        r"^##\s+Confidence\s*$([\s\S]*?)(?=^##\s|\Z)",
+        text,
+        re.MULTILINE | re.IGNORECASE,
+    )
     confidence = None
     if confidence_match:
-        value_match = re.search(r"\b([1-5])\s*/\s*5\b", confidence_match.group(1))
+        value_match = re.search(
+            r"^\s*(?:Confidence\s*:?\s*)?([1-5])(?:\s*/\s*5)?\s*$",
+            confidence_match.group(1),
+            re.MULTILINE | re.IGNORECASE,
+        )
         if value_match:
             confidence = int(value_match.group(1))
     return recommendation, confidence
@@ -63,17 +125,19 @@ def review_signals(text: str) -> tuple[str, int | None]:
 def ordering_status(signals: list[tuple[str, int | None]]) -> str:
     recommendation_ranks = {
         "reject": 0,
-        "major revision": 1,
-        "minor revision": 2,
-        "accept": 3,
+        "weak reject": 1,
+        "major revision": 2,
+        "borderline": 3,
+        "minor revision": 4,
+        "weak accept": 5,
+        "accept": 6,
     }
     ranks = [recommendation_ranks.get(recommendation, -1) for recommendation, _ in signals]
-    confidences = [confidence for _, confidence in signals]
-    if -1 in ranks or any(value is None for value in confidences):
-        return "inconclusive (missing structured signal)"
-    if ranks[0] < ranks[1] < ranks[2] and confidences[0] <= confidences[1] <= confidences[2]:
-        return "strictly increasing"
-    if ranks[0] > ranks[1] or ranks[1] > ranks[2] or confidences[0] > confidences[1] or confidences[1] > confidences[2]:
+    if -1 in ranks:
+        return "inconclusive (missing recommendation)"
+    if ranks[0] < ranks[1] < ranks[2]:
+        return "strictly increasing (recommendation-only)"
+    if ranks[0] > ranks[1] or ranks[1] > ranks[2]:
         return "not increasing"
     return "inconclusive (tied reviewer outcomes)"
 
@@ -100,8 +164,10 @@ def main() -> int:
     if args.reuse:
         for label, path in versions:
             try:
-                trails[label] = latest_trail(path)
-            except FileNotFoundError as error:
+                trail = latest_trail(path)
+                validate_reused_trail(trail, path, args)
+                trails[label] = trail
+            except (FileNotFoundError, ValueError, TypeError, AttributeError, json.JSONDecodeError) as error:
                 failures.append(f"{label}: {error}")
     else:
         with ThreadPoolExecutor(max_workers=3) as executor:
@@ -132,6 +198,7 @@ def main() -> int:
         f"- LLM: {args.llm}",
         f"- Variant: {args.variant or 'none'}",
         f"- Harness: {args.harness}",
+        f"- OSP provenance: {osp_provenance()}",
         "",
         "## Expected Ordering",
         "",
@@ -140,7 +207,7 @@ def main() -> int:
         "",
         "## Structured Ordering Check",
         "",
-        "The outcome score is only a reviewer signal: accept=3, minor revision=2, major revision=1, reject=0.",
+        "The ordering signal ranks recommendations from reject to accept; it is recommendation-only, not a scientific quality score.",
         "It must not be treated as a scientific quality score without a paper-specific rubric.",
         "",
         "| Version | Recommendation | Confidence |",
@@ -149,6 +216,8 @@ def main() -> int:
     for label in ("v1", "v2", "v3"):
         recommendation, confidence = signals[label]
         report.append(f"| {label} | {recommendation} | {confidence}/5 |" if confidence is not None else f"| {label} | {recommendation} | unknown |")
+    report += ["", "## Source Trails", ""]
+    report += [f"- {label}: `{trails[label].relative_to(ROOT)}`" for label in ("v1", "v2", "v3")]
     report += ["", f"Ordering status: **{ordering_status([signals[label] for label in ('v1', 'v2', 'v3')])}**."]
     for label in ("v1", "v2", "v3"):
         report += ["", f"## {label}", "", reviews[label]]
@@ -158,6 +227,20 @@ def main() -> int:
     report += list(difflib.unified_diff(reviews["v2"].splitlines(), reviews["v3"].splitlines(), fromfile="v2", tofile="v3"))
     report += ["```", ""]
     (comparison / "comparison.md").write_text("\n".join(report))
+    if args.trail_repo and not args.reuse:
+        upload = subprocess.run(
+            [
+                "hf", "upload", args.trail_repo, str(comparison),
+                f"osp-trails/erdos973-comparison/{comparison.name}",
+                "--type", "dataset", "--private",
+                "--commit-message", f"Add OSP comparison {comparison.name}",
+            ],
+            cwd=ROOT, capture_output=True, text=True,
+        )
+        (comparison / "upload.log").write_text(upload.stdout + upload.stderr)
+        if upload.returncode:
+            print("comparison upload failed", file=sys.stderr)
+            return upload.returncode
     print(comparison.relative_to(ROOT))
     return 0
 

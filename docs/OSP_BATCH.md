@@ -4,6 +4,9 @@
 isolated Open ScholarPeer session per manuscript and preserves that session's
 outputs.
 
+For the source-versus-generated-file boundary and the Fork installation loop,
+see [`OSP_FORK_WORKFLOW.md`](OSP_FORK_WORKFLOW.md).
+
 ## Trail layout
 
 ```text
@@ -14,10 +17,14 @@ osp-trails/<paper-name>/<run-timestamp>/
   workspace/             # isolated input/config used by opencode
 ```
 
-Every invocation gets a new timestamp directory, so rerunning a paper never
-overwrites an older review. `osp-trails/` is intentionally not gitignored:
-review trails are the durable record. Review content may be confidential and
-should be handled accordingly.
+Every executed run gets a new timestamp directory, so rerunning a paper never
+overwrites an older review. `osp-trails/` is gitignored because review content
+may be confidential. A trail is durably archived in the private Hugging Face
+dataset only when `--trail-repo ... --upload` is supplied and the upload
+succeeds. An upload failure makes the runner exit nonzero even if the review
+itself completed. The named dataset must already be private; Hugging Face's
+`--private` option only affects creation of a repository that does not yet
+exist.
 
 ## Usage
 
@@ -69,7 +76,9 @@ are uploaded.
 - The runner is parallel across papers and does not modify OSP's personas or
   prompts. Each paper still has its own isolated workspace and trail.
 - The venue is supplied once and reused for every paper in the invocation.
-- If one paper fails, the runner records its log and continues with the next.
+- If one paper fails after its trail directory is created, the runner records
+  its manifest and log and continues with the next. Invalid global CLI
+  settings are rejected before paper workers start.
 - A run is marked completed only when OpenCode exits successfully and produces
   `.brain/review/final_review.md`.
 - A failed paper can be rerun by invoking the command again; this creates a new
@@ -80,7 +89,8 @@ are uploaded.
 
 ## Version Comparison
 
-For the erdos973 sanity check, place the three PDFs under `papers/` and run:
+For the erdos973 sanity check, place the three PDFs under `papers/` and run a
+new comparison:
 
 ```bash
 python3 tools/osp_compare.py \
@@ -93,6 +103,13 @@ python3 tools/osp_compare.py \
   --harness opencode \
   --trail-repo Jack-Jieke-Wu/osp-trails
 ```
+
+To reuse existing local completed trails instead, add `--reuse`. Reuse does
+not download from Hugging Face and requires all three local PDFs plus a
+successful local trail containing `brain/review/final_review.md` for each
+version. The command writes a new comparison report only after those local
+prerequisites are present. Without `--reuse`, supplying `--trail-repo` uploads
+the three version trails and the generated comparison report.
 
 The comparison command reviews all three versions in parallel with identical
 settings, then writes `comparison.md` and one copy of each final review under

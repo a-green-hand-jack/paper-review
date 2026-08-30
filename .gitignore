@@ -12,3 +12,7 @@
 .opencode/
 .mcp.json
 AGENTS.md
+
+# Local private review trails and Python bytecode
+/osp-trails/
+__pycache__/

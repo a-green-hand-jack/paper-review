@@ -6,6 +6,7 @@ import argparse
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import hashlib
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -15,6 +16,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 TRAIL_ROOT = ROOT / "osp-trails"
+FORK_ROOT = Path(__file__).resolve().parents[2] / "open-scholar-peer"
 
 
 def timestamp() -> str:
@@ -27,6 +29,25 @@ def sha256(path: Path) -> str:
         for chunk in iter(lambda: stream.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def osp_provenance() -> dict[str, str | bool | None]:
+    fork_dir = Path(os.environ.get("OSP_FORK_DIR", FORK_ROOT))
+    if not (fork_dir / ".git").exists():
+        return {"fork_dir": str(fork_dir), "fork_commit": None, "fork_dirty": None}
+    commit = subprocess.run(
+        ["git", "-C", str(fork_dir), "rev-parse", "HEAD"],
+        capture_output=True, text=True, check=False,
+    )
+    dirty = subprocess.run(
+        ["git", "-C", str(fork_dir), "status", "--porcelain"],
+        capture_output=True, text=True, check=False,
+    )
+    return {
+        "fork_dir": str(fork_dir),
+        "fork_commit": commit.stdout.strip() if commit.returncode == 0 else None,
+        "fork_dirty": bool(dirty.stdout) if dirty.returncode == 0 else None,
+    }
 
 
 def papers() -> list[Path]:
@@ -65,6 +86,8 @@ def make_workspace(run_dir: Path, paper: Path, venue: str) -> Path:
 
 def resolve_model(llm: str, variant: str | None) -> tuple[str, str | None]:
     if llm == "gpt-5.6-sol-medium":
+        if variant not in (None, "medium"):
+            raise ValueError("--llm gpt-5.6-sol-medium cannot be combined with a non-medium --variant")
         return "openai/gpt-5.6-sol", "medium"
     if "/" not in llm:
         raise ValueError("--llm must be provider/model, for example openai/gpt-5.6-sol")
@@ -77,6 +100,16 @@ def upload_trail(run_dir: Path, paper_name_value: str, trail_repo: str) -> tuple
         "hf", "upload", trail_repo, str(run_dir), destination,
         "--type", "dataset", "--private", "--exclude", "workspace/**",
         "--commit-message", f"Add OSP trail {paper_name_value}/{run_dir.name}",
+    ]
+    result = subprocess.run(command, cwd=ROOT, capture_output=True, text=True)
+    return result.returncode, result.stdout + result.stderr
+
+
+def upload_file(path: Path, destination: str, trail_repo: str, message: str) -> tuple[int, str]:
+    command = [
+        "hf", "upload", trail_repo, str(path), destination,
+        "--type", "dataset", "--private",
+        "--commit-message", message,
     ]
     result = subprocess.run(command, cwd=ROOT, capture_output=True, text=True)
     return result.returncode, result.stdout + result.stderr
@@ -114,6 +147,7 @@ def run_one(
         return 0
 
     run_dir.mkdir(parents=True)
+    log_path = run_dir / "opencode.log"
     manifest = {
         "schema_version": 1,
         "paper": str(paper.relative_to(ROOT)),
@@ -130,34 +164,88 @@ def run_one(
         "trail_repo": trail_repo,
         "upload_status": "pending" if upload else "not requested",
     }
+    manifest["osp"] = osp_provenance()
     manifest_path = run_dir / "manifest.json"
     manifest_path.write_text(json.dumps(manifest, indent=2) + "\n")
+    result = None
     try:
-        workspace = make_workspace(run_dir, paper, venue)
-        log_path = run_dir / "opencode.log"
         with log_path.open("w") as log:
+            workspace = make_workspace(run_dir, paper, venue)
             result = subprocess.run(command, cwd=ROOT, stdout=log, stderr=subprocess.STDOUT, text=True)
         final_review = workspace / ".brain" / "review" / "final_review.md"
-        successful_review = result.returncode == 0 and final_review.is_file()
+        successful_review = result is not None and result.returncode == 0 and final_review.is_file()
         manifest["status"] = "completed" if successful_review else "failed"
-        manifest["returncode"] = result.returncode
-        if result.returncode == 0 and not successful_review:
+        if result is not None:
+            manifest["returncode"] = result.returncode
+        if result is not None and result.returncode == 0 and not successful_review:
             manifest["error"] = "OpenCode exited successfully but final_review.md was not produced"
         if (workspace / ".brain").exists():
             shutil.copytree(workspace / ".brain", run_dir / "brain", dirs_exist_ok=True)
     except Exception as error:
+        with log_path.open("a") as log:
+            log.write(f"setup or execution failed: {error!r}\n")
         manifest["status"] = "failed"
         manifest["error"] = repr(error)
     manifest_path.write_text(json.dumps(manifest, indent=2) + "\n")
     if upload:
-        code, output = upload_trail(run_dir, name, trail_repo)
-        (run_dir / "upload.log").write_text(output)
-        manifest["upload_status"] = "uploaded" if code == 0 else "failed"
-        if code:
-            manifest["upload_error"] = f"hf upload exited with code {code}"
+        try:
+            code, output = upload_trail(run_dir, name, trail_repo)
+            manifest["upload_status"] = "uploaded" if code == 0 else "failed"
+            if code:
+                manifest["upload_error"] = f"hf upload exited with code {code}"
+            (run_dir / "upload.log").write_text(output)
+        except Exception as error:
+            code = 1
+            manifest["upload_status"] = "failed"
+            manifest["upload_error"] = repr(error)
+            (run_dir / "upload.log").write_text(f"hf upload failed: {error!r}\n")
         manifest_path.write_text(json.dumps(manifest, indent=2) + "\n")
-    print(f"{manifest['status'].upper()} {name}: {run_dir.relative_to(ROOT)}")
-    return 0 if manifest["status"] == "completed" else 1
+        if code == 0:
+            try:
+                log_code, log_output = upload_file(
+                    run_dir / "upload.log",
+                    f"osp-trails/{name}/{run_dir.name}/upload.log",
+                    trail_repo,
+                    f"Add OSP upload log {name}/{run_dir.name}",
+                )
+                with (run_dir / "upload.log").open("a") as log:
+                    log.write(log_output)
+            except Exception as error:
+                log_code = 1
+                with (run_dir / "upload.log").open("a") as log:
+                    log.write(f"upload log failed: {error!r}\n")
+            if log_code:
+                manifest["upload_status"] = "failed"
+                manifest["upload_error"] = f"upload log exited with code {log_code}"
+                code = log_code
+                manifest_path.write_text(json.dumps(manifest, indent=2) + "\n")
+            else:
+                manifest["upload_status"] = "uploaded"
+                manifest_path.write_text(json.dumps(manifest, indent=2) + "\n")
+                try:
+                    manifest_code, manifest_output = upload_file(
+                        manifest_path,
+                        f"osp-trails/{name}/{run_dir.name}/manifest.json",
+                        trail_repo,
+                        f"Finalize OSP trail manifest {name}/{run_dir.name}",
+                    )
+                    with (run_dir / "upload.log").open("a") as log:
+                        log.write(manifest_output)
+                except Exception as error:
+                    manifest_code = 1
+                    with (run_dir / "upload.log").open("a") as log:
+                        log.write(f"manifest upload failed: {error!r}\n")
+                if manifest_code:
+                    manifest["upload_status"] = "failed"
+                    manifest["upload_error"] = f"manifest upload exited with code {manifest_code}"
+                    code = manifest_code
+                    manifest_path.write_text(json.dumps(manifest, indent=2) + "\n")
+    status = manifest["status"].upper()
+    if upload and manifest["upload_status"] != "uploaded":
+        status = "FAILED"
+    print(f"{status} {name}: {run_dir.relative_to(ROOT)}")
+    archive_failed = upload and manifest["upload_status"] != "uploaded"
+    return 0 if manifest["status"] == "completed" and not archive_failed else 1
 
 
 def main() -> int:
@@ -184,6 +272,12 @@ def main() -> int:
         parser.error("no manuscript PDFs found under papers/")
     if args.workers < 1:
         parser.error("--workers must be at least 1")
+    if args.harness != "opencode":
+        parser.error("unsupported --harness; currently supported: opencode")
+    try:
+        resolve_model(args.llm, args.variant)
+    except ValueError as error:
+        parser.error(str(error))
     failures = 0
     with ThreadPoolExecutor(max_workers=args.workers) as executor:
         futures = {
