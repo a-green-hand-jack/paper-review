@@ -70,7 +70,21 @@ def resolve_model(llm: str, variant: str | None) -> tuple[str, str | None]:
     return llm, variant
 
 
-def run_one(paper: Path, venue: str, llm: str, variant: str | None, harness: str, execute: bool) -> int:
+def upload_trail(run_dir: Path, paper_name_value: str, trail_repo: str) -> tuple[int, str]:
+    destination = f"osp-trails/{paper_name_value}/{run_dir.name}"
+    command = [
+        "hf", "upload", trail_repo, str(run_dir), destination,
+        "--type", "dataset", "--private", "--exclude", "workspace/**",
+        "--commit-message", f"Add OSP trail {paper_name_value}/{run_dir.name}",
+    ]
+    result = subprocess.run(command, cwd=ROOT, capture_output=True, text=True)
+    return result.returncode, result.stdout + result.stderr
+
+
+def run_one(
+    paper: Path, venue: str, llm: str, variant: str | None, harness: str,
+    trail_repo: str | None, upload: bool, execute: bool,
+) -> int:
     name = paper_name(paper)
     run_dir = TRAIL_ROOT / name / timestamp()
     workspace = run_dir / "workspace"
@@ -94,6 +108,8 @@ def run_one(paper: Path, venue: str, llm: str, variant: str | None, harness: str
     ]
     if not execute:
         print(f"DRY-RUN {name}: {' '.join(command)}")
+        if upload:
+            print(f"DRY-RUN upload: {trail_repo}/osp-trails/{name}/<timestamp>")
         return 0
 
     run_dir.mkdir(parents=True)
@@ -110,6 +126,8 @@ def run_one(paper: Path, venue: str, llm: str, variant: str | None, harness: str
         "status": "created",
         "trail": str(run_dir.relative_to(ROOT)),
         "command": command,
+        "trail_repo": trail_repo,
+        "upload_status": "pending" if upload else "not requested",
     }
     manifest_path = run_dir / "manifest.json"
     manifest_path.write_text(json.dumps(manifest, indent=2) + "\n")
@@ -130,6 +148,13 @@ def run_one(paper: Path, venue: str, llm: str, variant: str | None, harness: str
         manifest["status"] = "failed"
         manifest["error"] = repr(error)
     manifest_path.write_text(json.dumps(manifest, indent=2) + "\n")
+    if upload:
+        code, output = upload_trail(run_dir, name, trail_repo)
+        (run_dir / "upload.log").write_text(output)
+        manifest["upload_status"] = "uploaded" if code == 0 else "failed"
+        if code:
+            manifest["upload_error"] = f"hf upload exited with code {code}"
+        manifest_path.write_text(json.dumps(manifest, indent=2) + "\n")
     print(f"{manifest['status'].upper()} {name}: {run_dir.relative_to(ROOT)}")
     return 0 if manifest["status"] == "completed" else 1
 
@@ -142,9 +167,13 @@ def main() -> int:
     parser.add_argument("--harness", default="opencode", help="agent harness (default: opencode)")
     parser.add_argument("--paper", action="append", help="relative paper PDF; repeat for multiple papers")
     parser.add_argument("--all", action="store_true", help="process all manuscript PDFs")
+    parser.add_argument("--trail-repo", help="Hugging Face private dataset repository")
+    parser.add_argument("--upload", action="store_true", help="upload each trail to --trail-repo")
     parser.add_argument("--execute", action="store_true", help="actually invoke opencode")
     parser.add_argument("--workers", type=int, default=4, help="parallel papers (default: 4)")
     args = parser.parse_args()
+    if args.upload and not args.trail_repo:
+        parser.error("--upload requires --trail-repo NAMESPACE/DATASET")
     available = papers()
     selected = available if args.all or not args.paper else [ROOT / path for path in args.paper]
     invalid = [path for path in selected if path not in available]
@@ -157,7 +186,10 @@ def main() -> int:
     failures = 0
     with ThreadPoolExecutor(max_workers=args.workers) as executor:
         futures = {
-            executor.submit(run_one, path, args.venue, args.llm, args.variant, args.harness, args.execute): path
+            executor.submit(
+                run_one, path, args.venue, args.llm, args.variant, args.harness,
+                args.trail_repo, args.upload, args.execute,
+            ): path
             for path in selected
         }
         for future in as_completed(futures):

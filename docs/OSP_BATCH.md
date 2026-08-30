@@ -35,6 +35,8 @@ python3 tools/osp_batch.py \
   --llm openai/gpt-5.6-sol \
   --variant medium \
   --harness opencode \
+  --trail-repo Jack-Jieke-Wu/osp-trails \
+  --upload \
   --all \
   --execute
 ```
@@ -56,6 +58,11 @@ The CLI accepts `--llm`, `--variant`, `--harness`, `--paper`, and `--venue` so
 an OpenCode TUI agent can construct exactly the run it wants. The shorthand
 `gpt-5.6-sol-medium` is also accepted through `--llm` and maps to
 `openai/gpt-5.6-sol` with variant `medium`.
+
+Add `--trail-repo NAMESPACE/DATASET --upload` to upload each completed or
+failed trail to a private Hugging Face dataset. The `workspace/` directory is
+excluded from uploads; only the manifest, log, and copied `brain/` artifacts
+are uploaded.
 
 ## Notes
 
