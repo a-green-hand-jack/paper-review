@@ -27,7 +27,7 @@ Preview all current manuscript runs without calling the model:
 python3 tools/osp_batch.py --venue arxiv
 ```
 
-Run all manuscripts sequentially:
+Run all manuscripts in parallel (4 papers at a time by default):
 
 ```bash
 python3 tools/osp_batch.py \
@@ -38,6 +38,8 @@ python3 tools/osp_batch.py \
   --all \
   --execute
 ```
+
+Change the concurrency with `--workers`, for example `--workers 8`.
 
 Run one paper:
 
@@ -57,8 +59,8 @@ an OpenCode TUI agent can construct exactly the run it wants. The shorthand
 
 ## Notes
 
-- The runner is intentionally sequential and does not modify OSP's personas or
-  prompts.
+- The runner is parallel across papers and does not modify OSP's personas or
+  prompts. Each paper still has its own isolated workspace and trail.
 - The venue is supplied once and reused for every paper in the invocation.
 - If one paper fails, the runner records its log and continues with the next.
 - A run is marked completed only when OpenCode exits successfully and produces

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import hashlib
 import json
 import shutil
@@ -41,11 +42,20 @@ def paper_name(path: Path) -> str:
     return relative.with_suffix("").as_posix().replace("/", "__").replace("_", "-").lower()
 
 
-def make_workspace(run_dir: Path, paper: Path) -> Path:
+def make_workspace(run_dir: Path, paper: Path, venue: str) -> Path:
     workspace = run_dir / "workspace"
     brain_input = workspace / ".brain" / "input"
     brain_input.mkdir(parents=True)
     shutil.copy2(paper, brain_input / paper.name)
+    session = json.loads((ROOT / ".brain" / "session.json").read_text())
+    session["paper"] = {
+        "title": paper.stem,
+        "path": str(Path(".brain") / "input" / paper.name),
+        "parsed_path": str(Path(".brain") / "input" / "paper.md"),
+        "type": paper.suffix.lstrip("."),
+    }
+    session["venue"] = {"name": venue, "year": "", "source_url": "", "criteria_source": "pending"}
+    (workspace / ".brain" / "session.json").write_text(json.dumps(session, indent=2) + "\n")
     shutil.copytree(ROOT / ".claude", workspace / ".claude")
     shutil.copy2(ROOT / ".mcp.json", workspace / ".mcp.json")
     shutil.copy2(ROOT / "AGENTS.md", workspace / "AGENTS.md")
@@ -104,7 +114,7 @@ def run_one(paper: Path, venue: str, llm: str, variant: str | None, harness: str
     manifest_path = run_dir / "manifest.json"
     manifest_path.write_text(json.dumps(manifest, indent=2) + "\n")
     try:
-        workspace = make_workspace(run_dir, paper)
+        workspace = make_workspace(run_dir, paper, venue)
         log_path = run_dir / "opencode.log"
         with log_path.open("w") as log:
             result = subprocess.run(command, cwd=ROOT, stdout=log, stderr=subprocess.STDOUT, text=True)
@@ -133,6 +143,7 @@ def main() -> int:
     parser.add_argument("--paper", action="append", help="relative paper PDF; repeat for multiple papers")
     parser.add_argument("--all", action="store_true", help="process all manuscript PDFs")
     parser.add_argument("--execute", action="store_true", help="actually invoke opencode")
+    parser.add_argument("--workers", type=int, default=4, help="parallel papers (default: 4)")
     args = parser.parse_args()
     available = papers()
     selected = available if args.all or not args.paper else [ROOT / path for path in args.paper]
@@ -141,13 +152,21 @@ def main() -> int:
         parser.error("not manuscript PDFs under papers/: " + ", ".join(str(path) for path in invalid))
     if not selected:
         parser.error("no manuscript PDFs found under papers/")
+    if args.workers < 1:
+        parser.error("--workers must be at least 1")
     failures = 0
-    for path in selected:
-        try:
-            failures += run_one(path, args.venue, args.llm, args.variant, args.harness, args.execute) != 0
-        except Exception as error:
-            failures += 1
-            print(f"FAILED {path.relative_to(ROOT)}: {error}", file=sys.stderr)
+    with ThreadPoolExecutor(max_workers=args.workers) as executor:
+        futures = {
+            executor.submit(run_one, path, args.venue, args.llm, args.variant, args.harness, args.execute): path
+            for path in selected
+        }
+        for future in as_completed(futures):
+            path = futures[future]
+            try:
+                failures += future.result() != 0
+            except Exception as error:
+                failures += 1
+                print(f"FAILED {path.relative_to(ROOT)}: {error}", file=sys.stderr)
     if not args.execute:
         print(f"Prepared {len(selected)} isolated runs. Add --execute to invoke OpenCode.")
     return 1 if failures else 0
