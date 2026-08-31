@@ -40,3 +40,5 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 *.egg-info/
+
+# Optional per-paper metadata overrides; specs/ is committable when populated

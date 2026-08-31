@@ -1,22 +1,18 @@
 ---
-description: Draft a Harbor review task from a paper — stage the source, map it, propose candidate defects, and write a draft rubric for a human to sign off.
-agent: build
+description: Turn a paper version into a Harbor task. Stage, inspect, emit, audit, and report what to run on the box.
 ---
 
-Draft a Harbor review task for: **$ARGUMENTS**
+Turn this paper version into a Harbor task: **$ARGUMENTS**
 
-If nothing was named, run `pre-harbor list` and ask which version to work on
-rather than guessing.
+If nothing was named, run `pre-harbor list` and ask which version to work on.
 
-## What this produces, and what it does not
+## What this produces
 
-This ends with `rubrics/<label>.yaml` at `status: draft`. That is not a task
-and not ground truth. A person reads the draft, fixes it, and signs it off with
-`/annotate`; only then does `pre-harbor emit` produce anything.
-
-Do not run `pre-harbor emit` in this command. It would fail on a draft, which
-is the intended behaviour, and running it anyway just produces a confusing
-error at the end of an otherwise successful drafting session.
+A Harbor task under `tasks/paper-review-exam/<label>/` that `harbor run` can
+execute directly. The task gives a review agent the manuscript and asks it to
+write `review.md`; the verifier checks only that a review was submitted.
+There is no rubric, no scoring, and no LLM judge — review quality will be
+assessed later by human experts.
 
 ## Steps
 
@@ -26,74 +22,64 @@ error at the end of an otherwise successful drafting session.
 pre-harbor stage <label>
 ```
 
-Read the reported `excluded=` and `sanitised=` lists back to the operator. They
-say what was withheld from the agent environment; if they are empty for a
-`solution-*` paper, something is wrong — those all ship a `review/` trail.
+Read back the `excluded=` and `sanitised=` lists. They say what was withheld
+from the agent environment; if they are empty for a `solution-*` paper, the
+writing-time trail leaked and something is wrong.
 
-The staged manuscript is at `build/<label>/paper/` and its structure map at
+The staged manuscript is at `build/<label>/paper/` and its map at
 `build/<label>/paper_map.json`.
 
-### 2. Map the paper
-
-Launch **@paper-cartographer** on `build/<label>/paper/` and its
-`paper_map.json`. Ask for the claims ledger.
-
-Do not summarise or second-guess its output. Pass it to the next step intact.
-
-### 3. Gather the evidence the scout should see
-
-This is the step that decides whether the draft is any good.
-
-**If the paper has later versions** (`erdos973--v1`, `chapoton_q_zeta_numerators--v1`,
-`lieb_schultz_mattis_charge_transport--v1`), stage the next version too and diff
-them:
+### 2. Inspect the paper map
 
 ```
-pre-harbor stage <slug>--v<N+1>
-diff -u build/<label>/paper/main.tex build/<slug>--v<N+1>/paper/main.tex
+pre-harbor show-map <label>
 ```
 
-What the authors changed is what was wrong. This is the strongest evidence in
-the corpus — for `erdos973--v1` the v2 diff shows the title being rewritten to
-stop claiming priority over Luo-Yang-Zhu.
+Check that `main_tex` is right and the title was extracted. If the paper is
+modular (multiple tex files), glance at the graph to make sure nothing is
+missing. This is the last chance to catch a structural problem cheaply.
 
-**If the paper is a `solution-*` manuscript**, read its writing-time trail
-directly from the corpus (not from `build/`, which has it stripped):
+If a `specs/<label>.yaml` exists and sets a title, venue, or domain, those
+override whatever ingest derived. If no spec exists, defaults are used and the
+task still works — specs are optional overrides, never requirements.
+
+### 3. Emit and audit
 
 ```
-papers/<slug>/paper/review/internal_review.md
-papers/<slug>/paper/review/gates.md
-papers/<slug>/paper/review/cite_audit.md
-papers/<slug>/paper/plan.md          # only some have this
+pre-harbor emit <label>
 ```
 
-These record defects found *during writing*. Most were fixed. Check each
-against the current manuscript before believing it.
+This renders the task and immediately audits it for leaks. A leak deletes the
+task and fails the command — if that happens, report the violations verbatim
+and stop. Do not work around an audit failure.
 
-**If the operator gave a note or a file path**, include it verbatim.
+Then confirm independently:
 
-### 4. Propose candidates
+```
+pre-harbor audit
+```
 
-Launch **@defect-scout** with: the staged manuscript path, the cartographer's
-ledger, and everything from step 3, each labelled with which kind of evidence it
-is.
-
-### 5. Write the draft
-
-Launch **@rubric-editor** with the scout's YAML and the paper's slug, version,
-venue and domain. It writes `rubrics/<label>.yaml` and runs `pre-harbor check`.
-
-### 6. Report
+### 4. Report
 
 Tell the operator:
 
-- the rubric path, and that it is a **draft**
-- findings count, gating count, and the offline/online split
-- for each finding: id, title, severity, gating, and the scout's confidence
-- **which findings you would question first** — the low-confidence ones, the
-  ones resting only on your own reading, and any where `accept_if` is still
-  vague
-- the exact next command: `/annotate <label>`
+- the task directory
+- paper title, sections, citations
+- whether the audit is clean
+- that **emitting is not verifying**: no image was built, no agent ran, nothing
+  is proven until `harbor run -a oracle` scores 1.0 and `-a nop` scores 0.0
+- the exact commands for the Linux box:
 
-Do not tell the operator the draft "looks good". You proposed it; you are not
-the one who gets to approve it.
+```
+pre-harbor verify <label> --agent oracle
+pre-harbor verify <label> --agent nop
+```
+
+- and how to run with literature access when collecting real reviews:
+
+```
+harbor run -p tasks/paper-review-exam/<label> -a opencode \
+  --allow-agent-host arxiv.org \
+  --allow-agent-host api.semanticscholar.org \
+  --allow-agent-host api.openalex.org
+```

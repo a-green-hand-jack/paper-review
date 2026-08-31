@@ -1,15 +1,22 @@
-"""Render a Harbor task directory from staged material and a signed-off rubric.
+"""Render a Harbor task directory from staged material.
 
-Emission is the point where the public/private line becomes a filesystem fact:
+The task is a collection harness, not a scored benchmark: it exists so a review
+agent can read a manuscript and write `review.md`, which is then archived for
+human experts to assess later. So the verifier checks that a review was
+produced and says nothing about whether it is any good.
 
-    environment/   the manuscript, and nothing that describes its defects
-    solution/      the oracle, and the reference review it writes
-    tests/         the rubric, the grader, and the reference review again
+The public/private line still matters, and matters more than it would in a
+scored task. A review written by an agent that could read the manuscript's
+writing-time defect trail, or its own paper's next revision, is worthless as
+data and nothing downstream can tell. `environment/` gets the manuscript and
+nothing else; `audit.py` then checks that claim against what is on disk.
 
-`[verifier] environment_mode = "separate"` keeps `tests/` out of the agent's
-container entirely. Harbor does not upload `tests/` in that mode, so the
-verifier image has to own `/tests` itself -- which is why `tests/Dockerfile`
-does `COPY . /tests/`.
+`network_mode` is declared `no-network`. Harbor's `merge_extra_allowlists`
+promotes any task to `allowlist` when `--allow-agent-host` is passed at run
+time, so a task that declares no network can still be run with literature
+access -- while the reverse, closing a network a task opened, is not
+expressible. Declaring the closed baseline is what keeps both runs available
+from one task.
 """
 
 from __future__ import annotations
@@ -24,7 +31,7 @@ from pathlib import Path
 from jinja2 import Environment, FileSystemLoader, StrictUndefined
 
 from .ingest import IngestResult
-from .rubric import Protocol, Rubric
+from .spec import TaskSpec
 
 TEMPLATES = Path(__file__).parent / "templates"
 
@@ -32,9 +39,9 @@ TEMPLATES = Path(__file__).parent / "templates"
 #: or the canary stops identifying anything.
 CANARY_NAMESPACE = uuid.UUID("6f1c2d3e-9a4b-5c6d-8e7f-0a1b2c3d4e5f")
 
-DEFAULT_ALLOWED_HOSTS: tuple[str, ...] = (
+#: Suggested at run time via --allow-agent-host; not baked into the task.
+SCHOLARLY_HOSTS: tuple[str, ...] = (
     "arxiv.org",
-    "*.arxiv.org",
     "export.arxiv.org",
     "api.semanticscholar.org",
     "api.openalex.org",
@@ -42,7 +49,7 @@ DEFAULT_ALLOWED_HOSTS: tuple[str, ...] = (
     "doi.org",
 )
 
-DATASET_PREFIX = "review-exam"
+DATASET_NAME = "paper-review-exam"
 
 
 class EmitError(RuntimeError):
@@ -52,27 +59,22 @@ class EmitError(RuntimeError):
 @dataclass
 class EmitConfig:
     tasks_root: Path
+    dataset: str = DATASET_NAME
     task_version: str = "0.1.0"
     author_name: str = "paper-reviewing-exam"
-    judge_model: str = "gpt-5.4"
-    judge_votes: int = 3
     agent_timeout_sec: float = 3600.0
-    verifier_timeout_sec: float = 1800.0
+    verifier_timeout_sec: float = 300.0
     build_timeout_sec: float = 2400.0
     cpus: int = 2
     memory_mb: int = 8192
     storage_mb: int = 20480
-    allowed_hosts: tuple[str, ...] = DEFAULT_ALLOWED_HOSTS
-    min_review_chars: int = 400
+    #: A review shorter than this is a stub, not a submission.
+    min_review_chars: int = 200
     extra: dict = field(default_factory=dict)
 
 
-def dataset_name(protocol: Protocol) -> str:
-    return f"{DATASET_PREFIX}-{protocol.value}"
-
-
-def canary_for(task_id: str, protocol: Protocol) -> str:
-    return str(uuid.uuid5(CANARY_NAMESPACE, f"{task_id}:{protocol.value}"))
+def canary_for(task_id: str) -> str:
+    return str(uuid.uuid5(CANARY_NAMESPACE, task_id))
 
 
 def _env() -> Environment:
@@ -80,8 +82,6 @@ def _env() -> Environment:
         loader=FileSystemLoader(TEMPLATES),
         undefined=StrictUndefined,
         keep_trailing_newline=True,
-        trim_blocks=False,
-        lstrip_blocks=False,
     )
 
 
@@ -92,43 +92,40 @@ def _write(path: Path, text: str, *, executable: bool = False) -> None:
         path.chmod(path.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
 
 
-def emit_task(
-    result: IngestResult,
-    rubric: Rubric,
-    protocol: Protocol,
-    config: EmitConfig,
-) -> Path:
-    """Render one task. Refuses to run on a rubric a person has not signed off."""
-    rubric.assert_releasable([protocol])
+def _manuscript_pdf(root: Path) -> str | None:
+    pdfs = [p for p in sorted(root.glob("*.pdf")) if not p.name.startswith("fig-")]
+    if not pdfs:
+        return None
+    for candidate in pdfs:
+        if candidate.stem == "main":
+            return candidate.name
+    return pdfs[0].name
 
-    findings = rubric.findings_for(protocol)
-    gating = rubric.gating_for(protocol)
-    task_id = rubric.task_id_base
-    canary = canary_for(task_id, protocol)
-    task_dir = config.tasks_root / dataset_name(protocol) / task_id
+
+def emit_task(result: IngestResult, spec: TaskSpec, config: EmitConfig) -> Path:
+    """Render one Harbor task from a staged paper version."""
+    task_id = result.label
+    canary = canary_for(task_id)
+    task_dir = config.tasks_root / config.dataset / task_id
 
     if task_dir.exists():
         shutil.rmtree(task_dir)
     task_dir.mkdir(parents=True)
 
+    title = spec.title or result.paper_map.title
     env = _env()
-    pdf_name = None
-    for candidate in sorted(result.root.glob("*.pdf")):
-        if candidate.stem in {"main", result.label} or len(list(result.root.glob("*.pdf"))) == 1:
-            pdf_name = candidate.name
-            break
-
     common = {
         "canary": canary,
         "task_id": task_id,
-        "protocol": protocol.value,
-        "paper_slug": rubric.paper.slug,
-        "paper_version": rubric.paper.version or "",
-        "venue": rubric.paper.venue,
-        "domain": rubric.paper.domain,
+        "title": title,
+        "venue": spec.venue,
+        "domain": spec.domain,
+        "paper_kind": spec.paper_kind,
+        "notes": spec.notes.strip(),
         "main_tex": result.main_tex,
-        "pdf": pdf_name,
-        "allowed_hosts": list(config.allowed_hosts),
+        "pdf": _manuscript_pdf(result.root),
+        "bib_files": result.paper_map.bib_files,
+        "min_review_chars": config.min_review_chars,
     }
 
     _write(
@@ -138,44 +135,30 @@ def emit_task(
             task_version=config.task_version,
             author_name=config.author_name,
             source_sha256=result.source_sha256,
-            annotator=rubric.annotator or "",
-            annotated_at=rubric.annotated_at.isoformat() if rubric.annotated_at else "",
-            n_findings=len(findings),
-            n_gating=len(gating),
+            tex_lines=result.paper_map.total_tex_lines,
+            n_sections=len(result.paper_map.sections),
+            n_citations=len(result.paper_map.cited_keys),
             agent_timeout_sec=config.agent_timeout_sec,
             verifier_timeout_sec=config.verifier_timeout_sec,
             build_timeout_sec=config.build_timeout_sec,
             cpus=config.cpus,
             memory_mb=config.memory_mb,
             storage_mb=config.storage_mb,
-            judge_model=config.judge_model,
-            judge_votes=config.judge_votes,
         ),
     )
     _write(task_dir / "instruction.md", env.get_template("instruction.md.j2").render(**common))
 
-    # -- environment: manuscript only -------------------------------------
     _write(
         task_dir / "environment" / "Dockerfile",
         env.get_template("environment.Dockerfile.j2").render(**common),
     )
     shutil.copytree(result.root, task_dir / "environment" / "paper")
 
-    # -- the reference review, shared by oracle and verifier ---------------
-    reference = env.get_template("reference_review.md.j2").render(
-        **common,
-        findings=[f.model_dump(mode="json") for f in findings],
-        gating=[f.model_dump(mode="json") for f in gating],
-    )
-
     _write(
         task_dir / "solution" / "solve.sh",
         env.get_template("solve.sh.j2").render(**common),
         executable=True,
     )
-    _write(task_dir / "solution" / "private" / "reference_review.md", reference)
-
-    # -- verifier ----------------------------------------------------------
     _write(
         task_dir / "tests" / "Dockerfile",
         env.get_template("tests.Dockerfile.j2").render(**common),
@@ -185,15 +168,17 @@ def emit_task(
         env.get_template("test.sh.j2").render(**common),
         executable=True,
     )
-    shutil.copy2(TEMPLATES / "grader_review.py", task_dir / "tests" / "grader_review.py")
-
-    graded = rubric.public_view()
-    graded["protocol"] = protocol.value
-    graded["min_review_chars"] = config.min_review_chars
+    shutil.copy2(TEMPLATES / "check_submission.py", task_dir / "tests" / "check_submission.py")
     _write(
-        task_dir / "tests" / "private" / "rubric.json",
-        json.dumps(graded, indent=2, ensure_ascii=False) + "\n",
+        task_dir / "tests" / "contract.json",
+        json.dumps(
+            {
+                "task_id": task_id,
+                "review_path": "review.md",
+                "min_review_chars": config.min_review_chars,
+            },
+            indent=2,
+        )
+        + "\n",
     )
-    _write(task_dir / "tests" / "private" / "reference_review.md", reference)
-
     return task_dir

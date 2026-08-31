@@ -1,4 +1,4 @@
-"""`pre-harbor` -- build Harbor review tasks from papers.
+"""`pre-harbor` -- build Harbor review-collection tasks from papers.
 
 The command line splits along one line that matters: everything here runs on a
 laptop, and nothing here builds a container image or claims a task works.
@@ -19,19 +19,19 @@ import typer
 
 from .audit import audit_task
 from .corpus import CorpusError, PaperVersion, discover
-from .emit import EmitConfig, dataset_name, emit_task
+from .emit import DATASET_NAME, SCHOLARLY_HOSTS, EmitConfig, emit_task
 from .ingest import ingest
 from .manifest import row_for, write_manifest
-from .rubric import Protocol, Rubric, RubricError, load_rubric, rubric_path
+from .spec import SpecError, TaskSpec, load_spec, spec_path
 
 app = typer.Typer(
     add_completion=False,
     no_args_is_help=True,
-    help="Turn papers into Harbor tasks for evaluating paper review agents.",
+    help="Turn papers into Harbor tasks that collect peer reviews.",
 )
 
 DEFAULT_PAPERS = Path("papers")
-DEFAULT_RUBRICS = Path("rubrics")
+DEFAULT_SPECS = Path("specs")
 DEFAULT_BUILD = Path("build")
 DEFAULT_TASKS = Path("tasks")
 
@@ -61,14 +61,16 @@ def _versions(papers: Path, only: list[str] | None) -> list[PaperVersion]:
     return picked
 
 
-def _protocols(names: list[str] | None) -> list[Protocol]:
-    if not names:
-        return list(Protocol)
-    try:
-        return [Protocol(name) for name in names]
-    except ValueError as error:
-        _err(f"unknown protocol: {error}")
-        raise typer.Exit(2) from error
+def _specs(specs_root: Path, versions: list[PaperVersion]) -> dict[str, tuple[TaskSpec, bool]]:
+    out: dict[str, tuple[TaskSpec, bool]] = {}
+    for version in versions:
+        try:
+            spec = load_spec(specs_root, version.label)
+        except SpecError as error:
+            _err(str(error))
+            raise typer.Exit(2) from error
+        out[version.label] = (spec, spec_path(specs_root, version.label).is_file())
+    return out
 
 
 # --------------------------------------------------------------------------
@@ -79,26 +81,20 @@ def _protocols(names: list[str] | None) -> list[Protocol]:
 @app.command("list")
 def list_papers(
     papers: Annotated[Path, typer.Option(help="corpus root")] = DEFAULT_PAPERS,
-    rubrics: Annotated[Path, typer.Option(help="rubric directory")] = DEFAULT_RUBRICS,
+    specs: Annotated[Path, typer.Option(help="spec directory")] = DEFAULT_SPECS,
 ) -> None:
-    """Show every reviewable paper version and its annotation status."""
+    """Show every reviewable paper version and its metadata status."""
     versions = _versions(papers, None)
-    typer.echo(f"{'version':52s} {'shape':10s} {'rubric':12s} findings gating")
+    spec_map = _specs(specs, versions)
+    typer.echo(
+        f"{'version':52s} {'shape':10s} {'spec':8s} {'domain':14s} {'venue':12s} title"
+    )
     for version in versions:
-        status, findings, gating = "missing", "-", "-"
-        path = rubric_path(rubrics, version.label)
-        if path.is_file():
-            try:
-                rubric = Rubric.load(path)
-                status = rubric.status.value
-                findings = str(len(rubric.findings))
-                gating = str(len([f for f in rubric.findings if f.gating]))
-            except (RubricError, ValueError) as error:
-                status = "invalid"
-                findings = type(error).__name__
+        spec, has_spec = spec_map[version.label]
         typer.echo(
-            f"{version.label:52s} {version.source_kind:10s} {status:12s} "
-            f"{findings:>8s} {gating:>6s}"
+            f"{version.label:52s} {version.source_kind:10s} "
+            f"{'yes' if has_spec else '-':8s} {spec.domain:14s} {spec.venue:12s} "
+            f"{spec.title or '<derived>'}"
         )
     typer.echo(f"\n{len(versions)} versions, {len({v.slug for v in versions})} papers")
 
@@ -116,9 +112,30 @@ def doctor() -> None:
         typer.echo(f"[{mark}] {name:10s} {found or 'not on PATH'}")
     if not all(checks.values()):
         typer.echo(
-            "\nIngest, drafting, emit and audit run here regardless. Building images and\n"
-            "running `harbor run` need the missing tools -- do that on the Linux box."
+            "\nIngest and emit run here regardless. Building images and running\n"
+            "`harbor run` need the missing tools -- do that on the Linux box."
         )
+
+
+@app.command("init-spec")
+def init_spec(
+    label: Annotated[str, typer.Argument(help="paper version, e.g. erdos973--v1")],
+    papers: Annotated[Path, typer.Option()] = DEFAULT_PAPERS,
+    specs: Annotated[Path, typer.Option()] = DEFAULT_SPECS,
+    force: Annotated[bool, typer.Option(help="overwrite an existing spec")] = False,
+) -> None:
+    """Write a starter spec for a paper version, derived from its source."""
+    version = _versions(papers, [label])
+    if len(version) != 1 or version[0].label != label:
+        _err(f"{label} is a paper slug, not a version label; use e.g. {version[0].label}")
+        raise typer.Exit(2)
+    path = spec_path(specs, label)
+    if path.is_file() and not force:
+        _err(f"{path} exists; pass --force to overwrite")
+        raise typer.Exit(2)
+    spec = TaskSpec.default_for(label)
+    spec.save(path)
+    _ok(f"wrote {path}")
 
 
 # --------------------------------------------------------------------------
@@ -137,94 +154,62 @@ def stage(
         result = ingest(version, build)
         excluded = f"  excluded={list(result.excluded)}" if result.excluded else ""
         sanitised = f"  sanitised={list(result.sanitised)}" if result.sanitised else ""
+        title = result.paper_map.title or "<no \\title found>"
         typer.echo(
             f"{result.label:52s} main={result.main_tex:16s} "
             f"lines={result.paper_map.total_tex_lines:5d} "
             f"sections={len(result.paper_map.sections):3d} "
-            f"theorems={len(result.paper_map.theorems):3d}{excluded}{sanitised}"
+            f"theorems={len(result.paper_map.theorems):3d}{excluded}{sanitised}\n"
+            f"    {title}"
         )
-
-
-@app.command()
-def check(
-    only: Annotated[list[str] | None, typer.Argument()] = None,
-    papers: Annotated[Path, typer.Option()] = DEFAULT_PAPERS,
-    rubrics: Annotated[Path, typer.Option()] = DEFAULT_RUBRICS,
-) -> None:
-    """Say what stands between each rubric and a publishable task."""
-    problems = 0
-    for version in _versions(papers, only):
-        path = rubric_path(rubrics, version.label)
-        if not path.is_file():
-            typer.echo(f"{version.label}: no rubric yet -- run /paper2task to draft one")
-            problems += 1
-            continue
-        try:
-            rubric = Rubric.load(path)
-        except (RubricError, ValueError) as error:
-            _err(f"{version.label}: {error}")
-            problems += 1
-            continue
-        issues = rubric.release_problems()
-        if issues:
-            problems += 1
-            typer.echo(f"{version.label}:")
-            for issue in issues:
-                typer.echo(f"  - {issue}")
-        else:
-            _ok(f"{version.label}: ready ({len(rubric.findings)} findings)")
-    if problems:
-        raise typer.Exit(1)
 
 
 @app.command()
 def emit(
     only: Annotated[list[str] | None, typer.Argument()] = None,
     papers: Annotated[Path, typer.Option()] = DEFAULT_PAPERS,
-    rubrics: Annotated[Path, typer.Option()] = DEFAULT_RUBRICS,
+    specs: Annotated[Path, typer.Option()] = DEFAULT_SPECS,
     build: Annotated[Path, typer.Option()] = DEFAULT_BUILD,
     tasks: Annotated[Path, typer.Option()] = DEFAULT_TASKS,
-    protocol: Annotated[list[str] | None, typer.Option(help="offline and/or online")] = None,
-    judge_model: Annotated[str, typer.Option()] = "gpt-5.4",
-    judge_votes: Annotated[int, typer.Option()] = 3,
 ) -> None:
-    """Render Harbor tasks. Refuses any rubric a person has not signed off."""
-    protocols = _protocols(protocol)
-    config = EmitConfig(tasks_root=tasks, judge_model=judge_model, judge_votes=judge_votes)
-    rows: dict[Protocol, list] = {p: [] for p in protocols}
+    """Render Harbor tasks and audit each one. A leak deletes the task."""
+    config = EmitConfig(tasks_root=tasks)
+    rows = []
     failures = 0
+    by_label = {v.label: v for v in _versions(papers, only)}
+    spec_map = _specs(specs, list(by_label.values()))
 
-    for version in _versions(papers, only):
+    for label, version in sorted(by_label.items()):
+        spec, _ = spec_map[label]
+        result = ingest(version, build)
         try:
-            rubric = load_rubric(rubrics, version.label)
-        except RubricError as error:
-            _err(str(error))
+            task_dir = emit_task(result, spec, config)
+        except Exception as error:  # noqa: BLE001 - report, do not abort the batch
+            _err(f"{label}: {type(error).__name__}: {error}")
             failures += 1
             continue
-        result = ingest(version, build)
-        for proto in protocols:
-            try:
-                task_dir = emit_task(result, rubric, proto, config)
-            except RubricError as error:
-                _err(str(error))
-                failures += 1
-                continue
-            violations = audit_task(task_dir, rubric, version)
-            if violations:
-                _err(f"{task_dir}: LEAK -- refusing to keep this task")
-                for violation in violations:
-                    _err(f"  {violation}")
-                shutil.rmtree(task_dir)
-                failures += 1
-                continue
-            rows[proto].append(row_for(result, rubric, proto))
-            _ok(f"{proto.value:8s} {task_dir}")
+        violations = audit_task(task_dir, version)
+        if violations:
+            _err(f"{task_dir}: LEAK -- refusing to keep this task")
+            for violation in violations:
+                _err(f"  {violation}")
+            shutil.rmtree(task_dir)
+            failures += 1
+            continue
+        rows.append(
+            row_for(
+                result,
+                spec,
+                version.slug,
+                version.version,
+                has_spec=spec_path(specs, label).is_file(),
+            )
+        )
+        _ok(f"{task_dir}")
 
-    for proto, protocol_rows in rows.items():
-        if protocol_rows:
-            path = write_manifest(tasks, proto, protocol_rows)
-            typer.echo(f"{path}: {len(protocol_rows)} tasks")
-
+    if rows:
+        path = write_manifest(tasks, config.dataset, rows)
+        typer.echo(f"{path}: {len(rows)} tasks")
     if failures:
         _err(f"{failures} task(s) not emitted")
         raise typer.Exit(1)
@@ -234,7 +219,6 @@ def emit(
 def audit(
     tasks: Annotated[Path, typer.Option()] = DEFAULT_TASKS,
     papers: Annotated[Path, typer.Option()] = DEFAULT_PAPERS,
-    rubrics: Annotated[Path, typer.Option()] = DEFAULT_RUBRICS,
 ) -> None:
     """Re-audit tasks already on disk, reading what was written rather than
     trusting the code that wrote it."""
@@ -246,14 +230,7 @@ def audit(
     for task_toml in sorted(tasks.rglob("task.toml")):
         task_dir = task_toml.parent
         total += 1
-        label = task_dir.name
-        try:
-            rubric = load_rubric(rubrics, label)
-        except RubricError as error:
-            _err(f"{task_dir}: {error}")
-            leaking += 1
-            continue
-        violations = audit_task(task_dir, rubric, versions.get(label))
+        violations = audit_task(task_dir, versions.get(task_dir.name))
         if violations:
             leaking += 1
             _err(f"{task_dir}:")
@@ -274,14 +251,12 @@ def audit(
 def verify(
     label: Annotated[str, typer.Argument(help="task id, e.g. erdos973--v1")],
     tasks: Annotated[Path, typer.Option()] = DEFAULT_TASKS,
-    protocol: Annotated[str, typer.Option()] = "offline",
-    agent: Annotated[
-        str, typer.Option(help="harbor agent; 'oracle' proves solvability")
-    ] = "oracle",
+    agent: Annotated[str, typer.Option(help="harbor agent; 'oracle' or 'nop'")] = "oracle",
+    network: Annotated[str, typer.Option(help="'none' or 'scholarly'")] = "none",
     model: Annotated[str, typer.Option()] = "",
 ) -> None:
     """Run a task under Harbor, or print the command for a machine that can."""
-    task_dir = tasks / dataset_name(Protocol(protocol)) / label
+    task_dir = tasks / DATASET_NAME / label
     if not (task_dir / "task.toml").is_file():
         _err(f"{task_dir}: no task there. Run `pre-harbor emit {label}` first.")
         raise typer.Exit(2)
@@ -289,6 +264,12 @@ def verify(
     command = ["harbor", "run", "-p", str(task_dir), "-a", agent]
     if model:
         command += ["-m", model]
+    if network == "scholarly":
+        for host in SCHOLARLY_HOSTS:
+            command += ["--allow-agent-host", host]
+    elif network != "none":
+        _err(f"unknown network mode {network!r}; use 'none' or 'scholarly'")
+        raise typer.Exit(2)
     printable = " ".join(command)
 
     if not shutil.which("harbor") or not shutil.which("docker"):
@@ -296,8 +277,8 @@ def verify(
             "This machine has no harbor/docker, so nothing was run and nothing is verified.\n"
             "On the Linux box, from this repository:\n\n"
             f"  {printable}\n\n"
-            "The oracle must score close to 1.0 and an empty submission close to 0.0.\n"
-            "If it does not, the task or the grader is wrong."
+            "oracle must score 1.0 and `harbor run -a nop` must score 0.0. If they\n"
+            "do not, the task or the checker is wrong."
         )
         raise typer.Exit(3)
 

@@ -1,6 +1,5 @@
 ---
-description: Verify emitted Harbor tasks on a machine with Docker — oracle must score ~1.0, an empty submission ~0.0.
-agent: build
+description: Verify emitted Harbor tasks on a machine with Docker — oracle scores 1.0, nop scores 0.0. Report only facts.
 ---
 
 Verify the emitted task(s) for: **$ARGUMENTS**
@@ -19,60 +18,47 @@ should run on the Linux box and say explicitly that nothing was verified here.
 
 ## What verification means
 
-A task is proven when two things hold, in both protocols:
+A task is proven when **both** hold:
 
 | run | expected |
 |---|---|
-| `-a oracle` | reward close to 1.0 |
-| empty submission | reward 0.0, `judged` 0.0 |
+| `-a oracle` | reward 1.0 (the placeholder review satisfies the contract) |
+| `-a nop` | reward 0.0 (nothing was submitted) |
 
-The oracle writes the reference review, which states every finding in the
-rubric's own description of the defect — deliberately *not* in the words of
-that finding's `accept_if`. So an oracle score near 1.0 proves two things: the
-plumbing works, and each `accept_if` is satisfiable by prose that reports the
-defect rather than prose that recites the criterion.
-
-A finding the oracle misses is a **rubric** bug, never an agent one. Causes,
-in the order worth checking:
-
-- an `accept_if` so narrowly worded that only its own phrasing satisfies it
-- `JUDGE_API_KEY` not reaching the verifier, which shows as `grader_error: 1.0`
-- a finding whose `protocols` exclude the protocol being run, so it is scored
-  as missed when it was never in scope
+That is all "verified" means here. The oracle writes a placeholder, not a real
+review, so an oracle run says nothing about review quality — it proves the
+submission path and the checker are wired up.
 
 ## Steps
 
-### 1. Oracle, both protocols
+### 1. Oracle and floor
 
 ```
-pre-harbor verify <label> --protocol offline --agent oracle
-pre-harbor verify <label> --protocol online  --agent oracle
+pre-harbor verify <label> --agent oracle
+pre-harbor verify <label> --agent nop
 ```
 
-The judge needs credentials in the verifier environment. They come from
-`/Users/jieke/orca/projects/paperbench-harbor/.env` — `JUDGE_API_KEY` and
-`JUDGE_MODEL`. Pass them to `harbor run` rather than baking them into any
-image, and never echo their values.
+If both behave, one real run to collect data with:
 
-### 2. The floor
+```
+harbor run -p tasks/paper-review-exam/<label> -a opencode \
+  --allow-agent-host arxiv.org \
+  --allow-agent-host api.semanticscholar.org \
+  --allow-agent-host api.openalex.org
+```
 
-Run the same task with an agent that submits nothing, and confirm reward 0.0.
-A task that scores above zero on an empty submission is measuring nothing.
+No judge credentials are needed — the verifier only checks the submission.
 
-### 3. Read the per-finding record
+### 2. Confirm the review is real
 
-`/logs/verifier/evaluation.json` holds every verdict, the votes behind it, and
-the passage the judge quoted. Read it even when the reward looks right.
+Look in the job's `logs/` for `/workspace/submission/review.md`. Check it is
+non-empty and mentions the actual paper. Read `reward.json`: the
+`mentions_location` statistic is a heuristic signal that the review points at
+the manuscript rather than being a generic summary. If the review looks
+templated, say so — that is exactly what the human experts would find later,
+and cheaper to catch now.
 
-Look for: a finding marked `found` on an evidence quote that does not actually
-support it, and split votes (`["found","missed","found"]`) — those mark an
-`accept_if` that is not yet decidable, and they are where the score turns into
-noise.
+### 3. Report
 
-### 4. Report
-
-For each task and protocol: reward, gating recall, and whether the floor
-behaved. Then list every finding whose votes were split, as work to be done on
-the rubric.
-
-Do not report a task as ready on an oracle run alone. Both ends have to hold.
+For each task: oracle reward, nop reward, and (if collected) the review's word
+count and what it says. Report facts, not summaries of what you expected.

@@ -45,6 +45,7 @@ THEOREM_RE = re.compile(
     r"\\begin\{(theorem|lemma|proposition|corollary|definition|remark|claim|conjecture|example)\}"
 )
 LABEL_RE = re.compile(r"\\label\s*\{([^}]+)\}")
+TITLE_RE = re.compile(r"\\title\s*(?:\[[^\]]*\])?\s*\{", re.MULTILINE)
 CITE_RE = re.compile(r"\\cite[a-zA-Z]*\s*(?:\[[^\]]*\])*\s*\{([^}]+)\}")
 BIBENTRY_RE = re.compile(r"^\s*@[A-Za-z]+\s*\{\s*([^,\s]+)\s*,", re.MULTILINE)
 
@@ -73,6 +74,7 @@ class TheoremBlock:
 class PaperMap:
     label: str
     main_tex: str
+    title: str | None = None
     tex_files: list[str] = field(default_factory=list)
     bib_files: list[str] = field(default_factory=list)
     figure_files: list[str] = field(default_factory=list)
@@ -278,6 +280,72 @@ def _read_tex(path: Path) -> str:
     return strip_tex_comments(path.read_text(encoding="utf-8", errors="replace"))
 
 
+def _balanced_group(text: str, start: int) -> tuple[str, int] | None:
+    """Contents of the brace group opening at ``start``, and the index past it."""
+    depth, index = 1, start
+    while index < len(text) and depth:
+        char = text[index]
+        if char == "\\":
+            index += 2
+            continue
+        if char == "{":
+            depth += 1
+        elif char == "}":
+            depth -= 1
+        index += 1
+    return (text[start : index - 1], index) if not depth else None
+
+
+def _strip_title_notes(raw: str) -> str:
+    r"""Drop ``\thanks`` and ``\footnote`` groups, which are not part of a title."""
+    for command in (r"\thanks", r"\footnote"):
+        while (position := raw.find(command)) != -1:
+            brace = raw.find("{", position)
+            group = _balanced_group(raw, brace + 1) if brace != -1 else None
+            if group is None:
+                raw = raw[:position]
+                break
+            raw = raw[:position] + raw[group[1] :]
+    return raw
+
+
+def extract_title(text: str) -> str | None:
+    r"""The manuscript's own title, brace-matched out of ``\title{...}``.
+
+    A regex cannot do this alone. Titles in this corpus carry nested groups
+    (``Erd\H{o}s Problem 973``) and an optional running-head argument, so
+    matching to the first ``}`` truncates them. ``\\`` inside a title is a line
+    break rather than an end marker, and treating it as one silently truncated
+    four of the manuscripts here -- one to "Ferrers-Cell Formulas for
+    Chapoton's q-Zeta Numerators:".
+
+    The title reaches task metadata and the instruction the review agent reads,
+    so a truncation would be visible in the collected data.
+    """
+    match = TITLE_RE.search(text)
+    if not match:
+        return None
+    group = _balanced_group(text, match.end())
+    if group is None:
+        return None
+    raw = _strip_title_notes(group[0]).replace("\\\\", " ")
+    cleaned = re.sub(r"\s+", " ", raw).strip()
+    return cleaned or None
+
+
+def title_from_graph(root: Path, tex_files: list[Path]) -> str | None:
+    r"""The title, from whichever file in the document actually declares it.
+
+    Papers built from a toplevel stub that ``\input``s the body keep ``\title``
+    in the body file; searching only the toplevel returns nothing for them.
+    """
+    for path in tex_files:
+        title = extract_title(_read_tex(path))
+        if title:
+            return title
+    return None
+
+
 def _resolve_input(root: Path, base: Path, raw: str) -> Path | None:
     name = raw.strip()
     for candidate in (base.parent / name, root / name):
@@ -316,6 +384,7 @@ def _split_keys(raw: str) -> list[str]:
 def build_map(root: Path, label: str, main: str) -> PaperMap:
     tex_files = tex_graph(root, main)
     paper_map = PaperMap(label=label, main_tex=main)
+    paper_map.title = title_from_graph(root, tex_files)
     paper_map.tex_files = [p.relative_to(root).as_posix() for p in tex_files]
 
     cited: list[str] = []

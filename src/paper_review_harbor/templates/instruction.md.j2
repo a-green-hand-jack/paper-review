@@ -2,33 +2,44 @@
 
 # Review this manuscript
 
-A complete manuscript is at `/workspace/paper/`. Its toplevel TeX file is
-`{{ main_tex }}`{% if pdf %}, and the compiled PDF is `{{ pdf }}`{% endif %}.
-It is a {{ domain }} paper submitted to {{ venue }}.
+{% if title %}The manuscript is *{{ title }}*.
+{% endif %}Its source is at `/workspace/paper/`, with `{{ main_tex }}` as the
+toplevel TeX file{% if pdf %} and `{{ pdf }}` as the compiled PDF{% endif %}.
+{% if venue != "unknown" %}It was submitted to {{ venue }}.{% endif %}
+{%- if domain != "unknown" %} It is a {{ domain }} paper.{% endif %}
+{%- if paper_kind != "unknown" %} Kind: {{ paper_kind }}.{% endif %}
 
 Read it and write a peer review.
+{% if notes %}
+## From the operator
 
+{{ notes }}
+{% endif %}
 ## What to produce
 
 Write your review to **`/workspace/submission/review.md`**. That is the only
-required output. Anything else you find useful — structured findings, per-section
-notes, a scratch summary — is yours to decide, and will be archived alongside it
-without affecting your assessment.
+required output, and it must be a real review — at least {{ min_review_chars }}
+characters of substance.
 
-## What a review is expected to do here
+Anything else you find useful is yours to decide: structured findings, a
+per-section pass, notes on what you could not check. Extra files in
+`/workspace/submission/` are archived with the review.
 
-Your review is assessed on whether it identifies the manuscript's genuine
-defects: places where the paper claims more than it establishes, where an
-argument has a gap, where a statement is not supported by what precedes it,
-where attribution is wrong or missing, or where the presentation misleads a
-reader about what was actually done.
+## What the review should cover
 
-Be specific. A finding that names a location and says what is wrong with it is
-worth more than a general impression. Quote or point to the passage you mean.
+Write the review you would send to an editor. There is no template to fill in,
+but a useful review of a manuscript generally says:
 
-Reporting problems that are not there is not free: a review that lists every
-possible objection in the hope of covering the real ones scores worse than one
-that reports what it can actually support.
+- what the paper claims, and whether the argument supports it;
+- where it does not — a gap in a proof, a claim beyond what is established, a
+  quantity asserted without derivation, an attribution that does not hold;
+- what is genuinely good about it, since an editor needs that too;
+- what you could not verify, and why.
+
+Be specific. A finding that names a location and says what is wrong there is
+worth more than a general impression — quote or point to the passage you mean.
+Do not pad the review with objections you cannot support; a short review that is
+right beats a long one that hedges.
 
 If you are uncertain whether something is a defect, say so and say why, rather
 than either suppressing it or asserting it.
@@ -36,23 +47,18 @@ than either suppressing it or asserting it.
 ## Ground rules
 
 - `/workspace/paper/` is read-only input. Do not modify it.
-- Judge the manuscript as submitted. Do not rewrite it.
-{% if protocol == "offline" %}
-- **You have no network access.** Assess the manuscript on its own terms, from
-  what is on the page. Where a claim would need checking against outside
-  literature you cannot reach, say that it needs checking rather than guessing
-  at the answer.
-{%- else %}
-- **You have network access** to scholarly sources ({{ allowed_hosts | join(", ") }}).
-  Checking the manuscript's claims and attributions against the literature is
-  part of this task.
-{%- endif %}
+- Review the manuscript as submitted. Do not rewrite it.
 - Do not fabricate citations, quotations, or results.
+- Network access depends on how this task was launched. Check rather than
+  assume: if you cannot reach the network, assess the manuscript on what is on
+  the page, and where a claim would need checking against outside literature,
+  say that it needs checking rather than guessing at the answer.
 
-## Working space
+## What is installed
 
-- `/workspace/submission/` — your review goes here.
-- `/logs/agent/` — scratch space for your own run logs, archived with the trial.
-- LaTeX (`pdflatex`, `latexmk`) and `poppler-utils` (`pdftotext`, `pdftoppm`) are
-  installed if you want to compile the source or rasterise pages to inspect
-  figures.
+- LaTeX (`pdflatex`, `latexmk`) if you want to compile the source.
+- `poppler-utils` (`pdftotext`, `pdftoppm`) for reading the PDF and rasterising
+  pages to inspect figures.
+{% if bib_files %}- The bibliography is in {% for bib in bib_files %}`{{ bib }}`{% if not loop.last %}, {% endif %}{% endfor %}.
+{% endif %}
+`/logs/agent/` is scratch space for your own run logs, archived with the trial.

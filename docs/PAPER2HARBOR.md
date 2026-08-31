@@ -1,212 +1,127 @@
 # paper2harbor
 
 Turn a paper into a standard [Harbor](https://www.harborframework.com/docs/tasks)
-task for evaluating **paper review agents**: the manuscript is already written,
-and the agent under test has to review it.
+task for **collecting** peer reviews: the manuscript is already written, a
+review agent reads it and writes `review.md`, and the pair is archived for
+human experts to assess later.
 
 - **Input** — a paper's TeX source (directory, `.tar.gz`, `.zip`, or a bare
-  `main.tex`) plus an optional note.
+  `main.tex`) plus an optional brief.
 - **Output** — a Harbor task (`schema_version = "1.4"`) that `harbor run`
   executes directly.
-- **Ground truth** — a human-authored defect list. The workflow drafts
-  candidates; a person signs them off. Nothing unsigned becomes a task.
+- **The task does not judge reviews.** The verifier checks only that one was
+  submitted. Assessing quality is the human experts' job, on the collected
+  data — putting an LLM judge here would mean a model deciding what counts as a
+  good review, which is exactly the judgement the experts are for.
 
 This replaces the ad-hoc baseline harness in `tools/` (see
-[`OSP_BATCH.md`](OSP_BATCH.md)), which ran Open ScholarPeer once per paper and
-left the comparison to human auditors.
+[`OSP_BATCH.md`](OSP_BATCH.md)).
 
-## The corpus
+## Scaling is the requirement
 
-17 papers, 21 independently reviewable versions, in four directory shapes:
+The corpus is 17 papers / 21 reviewable versions today and may be a hundred.
+Nothing hardcodes the corpus: directory shapes are *recognised*, tasks are
+*enumerated*, and a new paper dropped into `papers/` becomes a task with no
+code change. A `specs/<label>.yaml` can override the title, venue, domain, or
+carry a brief for the agent, but is never required — a paper with no spec
+produces a working task with derived metadata.
 
-| shape | example |
-|---|---|
-| `<slug>/vN-source.tar.gz` + `vN.pdf` | `erdos973` (v1/v2/v3) |
-| `<slug>/source.{tar.gz,zip}` + `<slug>.pdf` | `residual_bounds_for_schur_stable_polynomials` |
-| `<slug>/main.tex` + `<slug>.pdf` | `on_the_first_and_the_second_borel_cantelli_lemmas` |
-| `<slug>/paper/main.tex` + `review/` + … | `solution-p8610` |
-
-Each version ships as two tasks, `offline` and `online`, so 42 tasks in total.
-
-## Two protocols
-
-The same paper, the same rubric, two network policies.
-
-|  | `offline` | `online` |
-|---|---|---|
-| `[environment] network_mode` | `no-network` | `allowlist` (arXiv, Semantic Scholar, OpenAlex, Crossref, DOI) |
-| what it measures | reading a manuscript | reading a manuscript *and* checking it against the literature |
-
-A finding declares which protocols it counts in. "This bound was already
-improved elsewhere" is not a fair thing to score in a container with no
-network, so it is marked `protocols: [online]` and the offline task never sees
-it.
-
-The online policy exists partly as a correction. `tools/osp_batch.py` shipped
-`.mcp.json`, which is Claude Code's format and which opencode ignores, so every
-review in the previous baseline ran with no retrieval at all — the trails
-recorded it themselves. Declaring hosts in `task.toml` makes that a property of
-the task rather than of whoever configured the harness.
-
-## Scoring
-
-The verifier runs in its own container (`environment_mode = "separate"`), so
-the rubric never shares a filesystem with the agent under test.
-
-1. **Deterministic gate.** `review.md` must exist and be substantive.
-2. **Bounded judgement.** For each annotated finding, an LLM judge decides
-   `found` / `partial` / `missed` against that finding's `accept_if` and
-   `reject_if`, and must quote the passage it relied on. A verdict it cannot
-   quote support for is downgraded — this is the guard against a judge
-   agreeing with a review that never said the thing.
-3. **Voting.** Each finding is judged an odd number of times and the majority
-   wins. `STATUS_REPORT.md` recorded whole-grade recommendation swings between
-   identical runs that three independent auditors put down to sampling noise;
-   a single call inherits it.
-
-`reward` is **gating recall**: the fraction of `gating` findings the review
-reported, with half credit for `partial`. Everything else —
-`finding_recall`, `recall_high/medium/low`, `distractor_rate`,
-`strict_gating_recall` — lands in `reward.json` but does not set the score.
-Per-finding verdicts, votes and evidence go to
-`/logs/verifier/evaluation.json` for human inspection.
-
-Measured on `erdos973--v1`, offline: the oracle scores `1.0` with
-`distractor_rate 0.0`; a review that raises eight plausible generic objections
-scores `0.0` with `distractor_rate 1.0`.
-
-The oracle earns its keep twice over. Its reference review states each finding
-in the rubric's description of the *defect*, deliberately not in the words of
-that finding's `accept_if`. So a 1.0 shows both that the plumbing works and
-that every `accept_if` is satisfiable by prose reporting the defect rather than
-prose reciting the criterion. A finding the oracle misses is a rubric bug.
-
-## What is private
-
-The corpus contains four distinct ways to hand an agent its own answers, and
-`pre-harbor audit` checks for all of them by reading what was written to disk
-rather than trusting the code that wrote it:
-
-| private | why |
-|---|---|
-| `solution-*/paper/review/` | the writing-time internal review; it names the defects |
-| `solution-*/paper/plan.md` | the writing plan |
-| a later version of the paper | v2 is a worked answer key for v1 |
-| the rubric, and the reference review rendered from it | the answers themselves |
-
-`unverified.bib` is deliberately **not** private. Every manuscript that ships
-one builds against it (`\bibliography{references,unverified}`), so withholding
-it breaks compilation and manufactures undefined-citation defects the authors
-never committed. Its writing-pipeline header comment — which says the entries
-"need checking before submission" — is stripped during staging, because that
-comment hands over a citation finding for free. The entries stay, blank fields
-included: those are the manuscript's genuine state and a reviewer is entitled
-to catch them.
+Each version of a paper is an **independent paper** (`erdos973--v1` and
+`--v2` are separate tasks), because a version fixes the previous version's
+problems and a review of one is not a review of the other.
 
 ## Task layout
 
 ```
-tasks/review-exam-offline/erdos973--v1/
+tasks/paper-review-exam/<label>/
 ├── task.toml
 ├── instruction.md
 ├── environment/
 │   ├── Dockerfile          # TeX Live subset + poppler-utils
 │   └── paper/              # manuscript only
-├── solution/
-│   ├── solve.sh            # oracle
-│   └── private/reference_review.md
-└── tests/
-    ├── Dockerfile          # verifier image; owns /tests
+├── solution/solve.sh       # placeholder-review oracle
+└── tests/                  # separate verifier: submission contract only
+    ├── Dockerfile
     ├── test.sh
-    ├── grader_review.py
-    └── private/
-        ├── rubric.json
-        └── reference_review.md
+    ├── check_submission.py
+    └── contract.json
 ```
 
-## The rubric
+## Network
 
-`rubrics/<label>.yaml` is the only ground truth in the benchmark. See
-[`rubrics/erdos973--v1.yaml`](../rubrics/erdos973--v1.yaml) for a worked draft.
+`task.toml` declares `network_mode = "no-network"`, on purpose. Verified
+against harbor 0.20.0 source (`trial/network_policy.py:merge_extra_allowlists`):
+`JobConfig` exposes only `extra_allowed_hosts` (additive), but passing
+`--allow-agent-host` at run time promotes any non-public policy to `allowlist`.
+So a task declared closed can always be run with literature access — while a
+task declared open can never be run closed. Declaring the closed baseline keeps
+both runs available from one task.
 
-```yaml
-findings:
-  - id: F1
-    severity: blocking          # blocking | major | minor
-    gating: true                # missing this means the review failed
-    detectability: medium       # high | medium | low
-    protocols: [offline, online]
-    location: "main.tex:212-215"
-    claim: <what the manuscript does>
-    defect: <what is wrong with it>
-    accept_if: <what a review must convey to count as reporting it>
-    reject_if: <the near-miss that must not count>
-distractors:
-  - id: D1                      # not a defect; measures precision
+```bash
+harbor run -p tasks/paper-review-exam/<label> -a opencode \
+  --allow-agent-host arxiv.org \
+  --allow-agent-host api.semanticscholar.org \
+  --allow-agent-host api.openalex.org
 ```
 
-`accept_if` and `reject_if` carry the benchmark. A judge asked "did this review
-find the defect?" answers differently each time; asked "does the review convey
-*this*, and not merely *that*?" it decides a bounded question. Write them as
-substance a review must convey, never as words it must use.
+⚠️ **The switch lives in the run invocation, not in the task.** When collecting
+data, record whether each run had network access alongside the review — an
+expert reading a review that never checked a citation needs to know whether the
+agent could have.
 
-`gating` means a review that misses this has failed. Most findings are not
-gating, and a rubric where more than about a third are has misunderstood the
-field. Each protocol needs at least one, or its reward is a 0/0 —
-`pre-harbor check` refuses the rubric otherwise.
+## What is private
 
-## Workflow
+A review written by an agent that could read the manuscript's writing-time
+defect trail, or its own paper's next revision, is worthless as data — and
+nothing downstream can tell, because a contaminated review looks exactly like
+a very good one. So contamination has to be prevented at build time; it cannot
+be detected afterwards.
 
-Authored as opencode commands in `.opencode/`, with the deterministic work in a
-tested Python CLI.
+`pre-harbor audit` checks, reading what was written to disk rather than
+trusting the code that wrote it:
 
-```
-/paper2task <label>     stage → map → propose candidates → write a DRAFT rubric
-/annotate <label>       walk a person through sign-off, then emit and audit
-/verify-task <label>    oracle and floor runs, on a machine with Docker
-```
+| private | why |
+|---|---|
+| `solution-*/paper/review/` | the writing-time internal review; it names the defects |
+| `solution-*/paper/plan.md` | the writing plan |
+| a later version of the paper | v2 is v1 with its problems fixed |
 
-The three subagents (`paper-cartographer`, `defect-scout`, `rubric-editor`) are
-read-only except for `rubrics/`, and `rubric-editor` is forbidden from writing
-`status: annotated`. That field is a person's signature.
+`unverified.bib` is deliberately **not** private. Every manuscript that ships
+one builds against it (`\bibliography{references,unverified}`), so withholding
+it breaks compilation and manufactures undefined-citation defects the authors
+never committed. Its header comment — which says the entries need checking
+before submission, and would hand a citation finding to the agent for free — is
+stripped instead. The entries stay, blank fields included.
 
 ## CLI
 
 ```
-pre-harbor list                 every version and its annotation status
+pre-harbor list                 every version and its metadata status
 pre-harbor doctor               what this machine can and cannot do
+pre-harbor init-spec <label>    write a starter spec (optional overrides)
 pre-harbor stage <label>        unpack publishable material, write paper_map.json
-pre-harbor check <label>        what stands between a rubric and a task
-pre-harbor emit <label>         render both protocols; audits and deletes on leak
+pre-harbor emit [labels...]     render tasks; audits each, deletes on leak
 pre-harbor audit                re-audit tasks on disk
 pre-harbor verify <label>       harbor run, or the command for a box with Docker
 ```
 
+## Workflow
+
+`/paper2task <label>` in opencode runs stage → inspect → emit → audit and
+reports the box commands. `/verify-task <label>` runs the oracle and the floor.
+
 ## Laptop and Linux box
 
-Staging, drafting, emitting and auditing run anywhere. Building images and
-running `harbor run` need Docker, and `pre-harbor doctor` says whether this
-machine has it. Commands that need it and cannot find it print the exact
-invocation for the Linux box and exit non-zero — they never substitute a weaker
-check, and emitting a task is never reported as verifying it.
+Ingest and emit run anywhere. Building images and running `harbor run` need
+Docker, and `pre-harbor doctor` says whether this machine has it; commands that
+need it and cannot find it print the exact invocation for the box and exit
+non-zero rather than substituting a weaker check.
 
 **`harbor run` happens on the Ubuntu box, driven by codex.** The checkout is at
 `~/dev/paper-review` (ssh host `ubuntu-box`), which has docker, harbor, codex
-and uv. Driving it from a laptop over ssh works for the deterministic setup,
-but a Harbor run that fails needs someone to read the build log and the
-verifier output and decide what broke, which is what the agent is there for.
+and uv. Driving it over ssh works for the deterministic setup, but a failed
+Harbor run needs someone to read the build log and the verifier output and
+decide what broke — which is what the agent is there for.
 
-```bash
-ssh ubuntu-box
-cd ~/dev/paper-review && git pull
-codex exec 'Run pre-harbor verify erdos973--v1 for both protocols with the
-  oracle agent, then again with an empty submission. Report the reward and the
-  per-finding votes from /logs/verifier/evaluation.json.'
-```
-
-A task is proven when, in both protocols, the oracle scores close to `1.0` and
-an empty submission scores `0.0`. Until both hold, it is unproven.
-
-The judge needs `JUDGE_API_KEY` and `JUDGE_MODEL` in the verifier environment.
-Pass them to `harbor run` from `paperbench-harbor/.env`; never bake them into
-an image.
+A task is proven when the oracle scores 1.0 and `-a nop` scores 0.0. Until
+both hold it is unproven, and emitting is never the same as verifying.
