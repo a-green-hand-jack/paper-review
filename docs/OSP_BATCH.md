@@ -1,5 +1,19 @@
 # OSP Batch Runner
 
+> **Retiring.** This harness measures one review agent (Open ScholarPeer) by
+> running it once per paper and leaving the before/after comparison to human
+> auditors — the method `STATUS_REPORT.md` documents, and the one whose
+> reproducibility limits it also documents. It is superseded by the Harbor
+> benchmark in [`PAPER2HARBOR.md`](PAPER2HARBOR.md), which scores any review
+> agent against a signed-off defect list. `tools/` stays on disk until the
+> Harbor tasks have run a full round, then goes.
+>
+> Two lessons from this file are carried into the task definitions rather than
+> the harness: a review agent needs literature retrieval declared in
+> `task.toml`, and PDF page rasterisation needs its scratch path to exist in
+> the image. Both are recorded in the comments below, and both silently
+> destroyed runs here.
+
 `tools/osp_batch.py` is a small wrapper around `opencode run`. It runs one
 isolated Open ScholarPeer session per manuscript and preserves that session's
 outputs.
