@@ -238,9 +238,61 @@ def upload_file(path: Path, destination: str, trail_repo: str, message: str) -> 
     return result.returncode, result.stdout + result.stderr
 
 
+PHASES = ["onboarding", "summary", "literature", "historian", "baseline_scout", "qa", "review"]
+
+
+def latest_completed_trail(name: str) -> Path | None:
+    """Newest trail for this paper that produced a review, or None."""
+    paper_dir = TRAIL_ROOT / name
+    if not paper_dir.is_dir():
+        return None
+    for trail in sorted(paper_dir.iterdir(), reverse=True):
+        if (trail / "brain" / "review" / "final_review.md").is_file():
+            return trail
+    return None
+
+
+def seed_from_prior(workspace: Path, prior: Path, from_phase: str) -> list[str]:
+    """Copy a prior run's artifacts so only `from_phase` onward needs re-running.
+
+    Iterating on the review phase costs about three minutes per paper this way,
+    against roughly thirty for a full pipeline. Everything upstream of the phase
+    under test is unchanged by definition, so re-deriving it each time buys
+    nothing and burns the retrieval rate limits that upstream phases depend on.
+
+    Returns the phase names marked completed, for the prompt.
+    """
+    cut = PHASES.index(from_phase)
+    keep = PHASES[:cut]
+    brain = workspace / ".brain"
+    prior_brain = prior / "brain"
+
+    if (prior_brain / "raw").is_dir():
+        shutil.copytree(prior_brain / "raw", brain / "raw", dirs_exist_ok=True)
+
+    session = json.loads((brain / "session.json").read_text())
+    prior_session = json.loads((prior_brain / "session.json").read_text())
+    # Carry the prior run's classification and criteria: re-deriving them would
+    # change what the phase under test is being fed, which is the one thing a
+    # controlled comparison must hold fixed.
+    for field in ("qa_criteria", "qa_pairs_per_criterion"):
+        if field in prior_session:
+            session[field] = prior_session[field]
+    session["paper"].update({
+        k: v for k, v in prior_session.get("paper", {}).items()
+        if k in ("domain_profile", "numerical_slice", "field", "review_mode", "title")
+    })
+    session["venue"] = prior_session.get("venue", session["venue"])
+    for phase in keep:
+        session["phases"][phase] = prior_session["phases"].get(phase, session["phases"][phase])
+    session["resume_from"] = from_phase
+    (brain / "session.json").write_text(json.dumps(session, indent=2) + "\n")
+    return keep
+
+
 def run_one(
     paper: Path, venue: str, llm: str, variant: str | None, harness: str,
-    trail_repo: str | None, upload: bool, execute: bool,
+    trail_repo: str | None, upload: bool, execute: bool, from_phase: str | None = None,
 ) -> int:
     name = paper_name(paper)
     run_dir = TRAIL_ROOT / name / timestamp()
@@ -258,11 +310,20 @@ def run_one(
     ]
     if resolved_variant:
         command += ["--variant", resolved_variant]
-    command += [
-        "Use Open ScholarPeer to complete the full review of the paper in this workspace. "
-        f"The review venue is {venue}. Execute the numbered OSP phases in order; do not "
-        "only report the dispatcher status, and do not process any other paper.",
-    ]
+    if from_phase:
+        cmds = "".join(f"/{PHASES.index(x)}-osp-{x.replace('_', '-')} " for x in PHASES[PHASES.index(from_phase):])
+        command += [
+            f"The earlier OSP phases are already complete and their artifacts are in .brain/. "
+            f"Do NOT re-run them. Resume at the {from_phase} phase and run only: {cmds.strip()}. "
+            f"The review venue is {venue}. Read the existing .brain/raw/ artifacts as your inputs; "
+            "do not re-derive them, and do not process any other paper.",
+        ]
+    else:
+        command += [
+            "Use Open ScholarPeer to complete the full review of the paper in this workspace. "
+            f"The review venue is {venue}. Execute the numbered OSP phases in order; do not "
+            "only report the dispatcher status, and do not process any other paper.",
+        ]
     if not execute:
         print(f"DRY-RUN {name}: {' '.join(command)}")
         if upload:
@@ -294,6 +355,17 @@ def run_one(
     try:
         with log_path.open("w") as log:
             workspace = make_workspace(run_dir, paper, venue)
+            if from_phase:
+                prior = latest_completed_trail(name)
+                if prior is None:
+                    manifest["status"] = "failed"
+                    manifest["error"] = f"--from-phase {from_phase} needs a prior completed run; none found"
+                    manifest_path.write_text(json.dumps(manifest, indent=2) + "\n")
+                    print(f"SKIP {name}: no prior trail to resume from")
+                    return 1
+                seeded = seed_from_prior(workspace, prior, from_phase)
+                manifest["seeded_from"] = str(prior.relative_to(ROOT))
+                manifest["seeded_phases"] = seeded
             result = subprocess.run(command, cwd=ROOT, stdout=log, stderr=subprocess.STDOUT, text=True)
         final_review = workspace / ".brain" / "review" / "final_review.md"
         successful_review = result is not None and result.returncode == 0 and final_review.is_file()
@@ -388,6 +460,10 @@ def main() -> int:
     parser.add_argument("--upload", action="store_true", help="upload each trail to --trail-repo")
     parser.add_argument("--execute", action="store_true", help="actually invoke opencode")
     parser.add_argument("--workers", type=int, default=4, help="parallel papers (default: 4)")
+    parser.add_argument("--from-phase", choices=PHASES[1:], metavar="PHASE",
+                        help="reuse the newest completed trail's artifacts and re-run only from "
+                             "this phase onward (%(choices)s). Iterating on the review phase costs "
+                             "~3 min/paper this way instead of ~30.")
     args = parser.parse_args()
     if args.upload and not args.trail_repo:
         parser.error("--upload requires --trail-repo NAMESPACE/DATASET")
@@ -411,7 +487,7 @@ def main() -> int:
         futures = {
             executor.submit(
                 run_one, path, args.venue, args.llm, args.variant, args.harness,
-                args.trail_repo, args.upload, args.execute,
+                args.trail_repo, args.upload, args.execute, args.from_phase,
             ): path
             for path in selected
         }
