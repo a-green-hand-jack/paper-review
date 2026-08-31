@@ -49,6 +49,30 @@ SCHOLARLY_HOSTS: tuple[str, ...] = (
     "doi.org",
 )
 
+#: What Harbor's agent adapters need in order to install themselves.
+#:
+#: Harbor installs the agent at run time rather than from the image, and every
+#: adapter's install step fetches its own runtime. The codex adapter, for
+#: instance, apt-gets `curl ripgrep`, pipes nvm's installer from
+#: raw.githubusercontent.com, pulls node from nodejs.org, then npm-installs
+#: itself. A task declaring `no-network` blocks all of it, and the run dies in
+#: setup with `NonZeroAgentExitCodeError` before the agent ever sees the paper.
+#:
+#: These are needed at environment start, not only during the agent phase, so
+#: they go to `--allow-environment-host` as well.
+AGENT_INSTALL_HOSTS: tuple[str, ...] = (
+    "archive.ubuntu.com",
+    "security.ubuntu.com",
+    "deb.debian.org",
+    "github.com",
+    "raw.githubusercontent.com",
+    "objects.githubusercontent.com",
+    "nodejs.org",
+    "registry.npmjs.org",
+    "pypi.org",
+    "files.pythonhosted.org",
+)
+
 DATASET_NAME = "paper-review-exam"
 
 #: TOML basic strings recognise a fixed set of escapes; any other backslash is

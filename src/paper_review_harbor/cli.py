@@ -19,9 +19,16 @@ import typer
 
 from .audit import audit_task
 from .corpus import CorpusError, PaperVersion, discover
-from .emit import DATASET_NAME, SCHOLARLY_HOSTS, EmitConfig, emit_task
+from .emit import (
+    AGENT_INSTALL_HOSTS,
+    DATASET_NAME,
+    SCHOLARLY_HOSTS,
+    EmitConfig,
+    emit_task,
+)
 from .ingest import ingest
 from .manifest import row_for, write_manifest
+from .publish import PublishError, plan_publish, read_manifest, render_readme, upload
 from .spec import SpecError, TaskSpec, load_spec, spec_path
 
 app = typer.Typer(
@@ -242,34 +249,113 @@ def audit(
     _ok(f"{total} tasks audited, no leaks")
 
 
+@app.command()
+def publish(
+    repo: Annotated[str, typer.Option(help="Hugging Face dataset, e.g. org/name")],
+    tasks: Annotated[Path, typer.Option()] = DEFAULT_TASKS,
+    papers: Annotated[Path, typer.Option()] = DEFAULT_PAPERS,
+    revision: Annotated[str, typer.Option(help="branch the harbor URL should name")] = "main",
+    execute: Annotated[bool, typer.Option(help="actually upload; off by default")] = False,
+    readme: Annotated[bool, typer.Option(help="also write the dataset card")] = True,
+) -> None:
+    """Publish emitted tasks to Hugging Face. Re-audits first; dry run by default.
+
+    A public dataset can be cached or mirrored between the push and any later
+    deletion, so the upload is opt-in and the audit runs again here rather than
+    trusting that `emit` ran it.
+    """
+    versions = {v.label: v for v in _versions(papers, None)}
+    try:
+        plan = plan_publish(tasks, repo, revision=revision, versions=versions)
+    except PublishError as error:
+        _err(str(error))
+        raise typer.Exit(1) from error
+
+    typer.echo(
+        f"{len(plan.task_ids)} tasks, {plan.total_bytes / 1e6:.1f} MB\n"
+        f"  from {plan.local_dir}\n"
+        f"  to   {plan.repo_id}:{plan.dataset}/"
+    )
+    card = render_readme(plan, read_manifest(plan)) if readme else None
+
+    try:
+        commands = upload(plan, readme=card, execute=execute)
+    except PublishError as error:
+        _err(str(error))
+        raise typer.Exit(1) from error
+
+    if not execute:
+        typer.echo(f"\nDry run. Pass --execute to upload:\n\n{commands}\n")
+        typer.echo("Publishing is public and hard to undo; nothing was sent.")
+        return
+
+    _ok(f"\npublished to https://huggingface.co/datasets/{plan.repo_id}")
+    typer.echo(f"\nHarbor reads it directly:\n\n  {plan.harbor_command()}\n")
+
+
 # --------------------------------------------------------------------------
 # handing work to a machine with Docker
 # --------------------------------------------------------------------------
+
+
+NETWORK_MODES = {
+    #: Only oracle and nop can run with nothing allowed; a hosted agent cannot
+    #: install itself, let alone reach its own API.
+    "none": (),
+    #: Enough for a hosted agent to install and run, with no literature access.
+    "agent": AGENT_INSTALL_HOSTS,
+    #: Agent plus literature. Note that arXiv also serves the later versions of
+    #: any multi-version paper in this corpus.
+    "scholarly": AGENT_INSTALL_HOSTS + SCHOLARLY_HOSTS,
+}
+
+
+def _host_args(hosts: tuple[str, ...]) -> list[str]:
+    """Allow each host at both phases.
+
+    Agent installation happens during trial setup, under the environment
+    baseline rather than the agent-phase override, so `--allow-agent-host`
+    alone leaves the install to fail.
+    """
+    args: list[str] = []
+    for host in hosts:
+        args += ["--allow-agent-host", host, "--allow-environment-host", host]
+    return args
 
 
 @app.command()
 def verify(
     label: Annotated[str, typer.Argument(help="task id, e.g. erdos973--v1")],
     tasks: Annotated[Path, typer.Option()] = DEFAULT_TASKS,
-    agent: Annotated[str, typer.Option(help="harbor agent; 'oracle' or 'nop'")] = "oracle",
-    network: Annotated[str, typer.Option(help="'none' or 'scholarly'")] = "none",
-    model: Annotated[str, typer.Option()] = "",
+    agent: Annotated[str, typer.Option(help="harbor agent: oracle, nop, codex, ...")] = "oracle",
+    network: Annotated[str, typer.Option(help="none | agent | scholarly")] = "none",
+    model: Annotated[str, typer.Option(help="required by most real agents")] = "",
+    api_host: Annotated[str, typer.Option(help="the agent's own provider host")] = "",
 ) -> None:
     """Run a task under Harbor, or print the command for a machine that can."""
     task_dir = tasks / DATASET_NAME / label
     if not (task_dir / "task.toml").is_file():
         _err(f"{task_dir}: no task there. Run `pre-harbor emit {label}` first.")
         raise typer.Exit(2)
+    if network not in NETWORK_MODES:
+        _err(f"unknown network mode {network!r}; use {' | '.join(NETWORK_MODES)}")
+        raise typer.Exit(2)
+
+    hosts = NETWORK_MODES[network]
+    if api_host:
+        hosts = hosts + (api_host,)
+    if network == "none" and agent not in {"oracle", "nop"}:
+        _err(
+            f"agent {agent!r} with --network none will fail during setup: Harbor installs "
+            "agents at run time and the install fetches a runtime it cannot reach. Use "
+            "--network agent (or scholarly), and --api-host for the provider."
+        )
+        raise typer.Exit(2)
 
     command = ["harbor", "run", "-p", str(task_dir), "-a", agent]
     if model:
         command += ["-m", model]
-    if network == "scholarly":
-        for host in SCHOLARLY_HOSTS:
-            command += ["--allow-agent-host", host]
-    elif network != "none":
-        _err(f"unknown network mode {network!r}; use 'none' or 'scholarly'")
-        raise typer.Exit(2)
+    command += ["-y", *_host_args(hosts)]
     printable = " ".join(command)
 
     if not shutil.which("harbor") or not shutil.which("docker"):
