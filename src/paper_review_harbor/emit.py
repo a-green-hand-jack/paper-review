@@ -51,9 +51,44 @@ SCHOLARLY_HOSTS: tuple[str, ...] = (
 
 DATASET_NAME = "paper-review-exam"
 
+#: TOML basic strings recognise a fixed set of escapes; any other backslash is
+#: a parse error.
+_TOML_ESCAPES = {
+    "\\": "\\\\",
+    '"': '\\"',
+    "\b": "\\b",
+    "\f": "\\f",
+    "\n": "\\n",
+    "\r": "\\r",
+    "\t": "\\t",
+}
+
 
 class EmitError(RuntimeError):
     """The task could not be rendered."""
+
+
+def toml_escape(value: object) -> str:
+    r"""Escape a value for a TOML basic string.
+
+    Paper titles are LaTeX and carry backslashes: ``Erd\H{o}s Problem 973`` is a
+    real title in this corpus. Interpolated raw, ``\H`` is an invalid escape and
+    the whole ``task.toml`` fails to parse -- at which point Harbor's
+    ``Task.is_valid_dir`` returns False, the directory is retried as a dataset,
+    and ``harbor run`` reports "Either datasets or tasks must be provided",
+    naming neither the file nor the offending character. Every string
+    interpolated into the manifest goes through here.
+    """
+    text = "" if value is None else str(value)
+    escaped = []
+    for char in text:
+        if char in _TOML_ESCAPES:
+            escaped.append(_TOML_ESCAPES[char])
+        elif ord(char) < 0x20 or ord(char) == 0x7F:
+            escaped.append(f"\\u{ord(char):04X}")
+        else:
+            escaped.append(char)
+    return "".join(escaped)
 
 
 @dataclass
@@ -78,11 +113,13 @@ def canary_for(task_id: str) -> str:
 
 
 def _env() -> Environment:
-    return Environment(
+    env = Environment(
         loader=FileSystemLoader(TEMPLATES),
         undefined=StrictUndefined,
         keep_trailing_newline=True,
     )
+    env.filters["toml"] = toml_escape
+    return env
 
 
 def _write(path: Path, text: str, *, executable: bool = False) -> None:
