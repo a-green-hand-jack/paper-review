@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 import pytest
@@ -11,6 +12,7 @@ from paper_review_harbor.ingest import (
     IngestError,
     find_main_tex,
     ingest,
+    latex_to_text,
     strip_tex_comments,
 )
 
@@ -146,3 +148,42 @@ class TestStagedPdf:
         for version in discover(real_papers):
             result = ingest(version, tmp_path / "build")
             assert list(result.root.glob("*.pdf")), version.label
+
+
+class TestLatexToText:
+    """Titles reach metadata, the instruction and the dataset card -- all read
+    by people, so raw LaTeX in them is a defect."""
+
+    def test_accents_compose(self) -> None:
+        assert latex_to_text(r"Erd\H{o}s Problem 973") == "Erdős Problem 973"
+        assert latex_to_text(r"Schr\"{o}dinger") == "Schrödinger"
+        assert latex_to_text(r"caf\'{e}") == "café"
+
+    def test_accent_without_braces(self) -> None:
+        assert latex_to_text(r"Erd\H os") == "Erdős"
+
+    def test_texorpdfstring_takes_the_plain_form(self) -> None:
+        """Its second argument exists precisely to be the readable one."""
+        assert latex_to_text(r"Type-\texorpdfstring{$B$}{B} Posets") == "Type-B Posets"
+
+    def test_math_delimiters_go_but_content_stays(self) -> None:
+        assert latex_to_text(r"$R$-matrices") == "R-matrices"
+
+    def test_dashes_become_dashes(self) -> None:
+        assert latex_to_text("Fuss--Catalan") == "Fuss–Catalan"
+        assert latex_to_text("a---b") == "a—b"
+
+    def test_escaped_specials_survive(self) -> None:
+        assert latex_to_text(r"50\% \& more") == "50% & more"
+
+    def test_unknown_macro_is_left_visible(self) -> None:
+        """A silent drop would be worse: only a visible one gets noticed."""
+        assert "\\unknownmacro" in latex_to_text(r"\unknownmacro{x}")
+
+    def test_no_corpus_title_carries_latex(self, real_papers: Path, tmp_path: Path) -> None:
+        offenders = {}
+        for version in discover(real_papers):
+            title = ingest(version, tmp_path / "build").paper_map.title
+            if title and re.search(r"\\[a-zA-Z]|[${}]", title):
+                offenders[version.label] = title
+        assert offenders == {}
