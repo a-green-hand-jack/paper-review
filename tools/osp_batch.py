@@ -293,6 +293,7 @@ def seed_from_prior(workspace: Path, prior: Path, from_phase: str) -> list[str]:
 def run_one(
     paper: Path, venue: str, llm: str, variant: str | None, harness: str,
     trail_repo: str | None, upload: bool, execute: bool, from_phase: str | None = None,
+    label: str | None = None,
 ) -> int:
     name = paper_name(paper)
     run_dir = TRAIL_ROOT / name / timestamp()
@@ -349,6 +350,8 @@ def run_one(
         "upload_status": "pending" if upload else "not requested",
     }
     manifest["osp"] = osp_provenance()
+    if label:
+        manifest["label"] = label
     manifest_path = run_dir / "manifest.json"
     manifest_path.write_text(json.dumps(manifest, indent=2) + "\n")
     result = None
@@ -460,6 +463,9 @@ def main() -> int:
     parser.add_argument("--upload", action="store_true", help="upload each trail to --trail-repo")
     parser.add_argument("--execute", action="store_true", help="actually invoke opencode")
     parser.add_argument("--workers", type=int, default=4, help="parallel papers (default: 4)")
+    parser.add_argument("--label", help="short name for this batch, recorded in every manifest. "
+                                        "Trails are otherwise identified only by timestamp, which "
+                                        "says nothing about what the run was testing.")
     parser.add_argument("--from-phase", choices=PHASES[1:], metavar="PHASE",
                         help="reuse the newest completed trail's artifacts and re-run only from "
                              "this phase onward (%(choices)s). Iterating on the review phase costs "
@@ -487,7 +493,7 @@ def main() -> int:
         futures = {
             executor.submit(
                 run_one, path, args.venue, args.llm, args.variant, args.harness,
-                args.trail_repo, args.upload, args.execute, args.from_phase,
+                args.trail_repo, args.upload, args.execute, args.from_phase, args.label,
             ): path
             for path in selected
         }
