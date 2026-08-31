@@ -190,12 +190,23 @@ machine has it. Commands that need it and cannot find it print the exact
 invocation for the Linux box and exit non-zero — they never substitute a weaker
 check, and emitting a task is never reported as verifying it.
 
+**`harbor run` happens on the Ubuntu box, driven by codex.** The checkout is at
+`~/dev/paper-review` (ssh host `ubuntu-box`), which has docker, harbor, codex
+and uv. Driving it from a laptop over ssh works for the deterministic setup,
+but a Harbor run that fails needs someone to read the build log and the
+verifier output and decide what broke, which is what the agent is there for.
+
+```bash
+ssh ubuntu-box
+cd ~/dev/paper-review && git pull
+codex exec 'Run pre-harbor verify erdos973--v1 for both protocols with the
+  oracle agent, then again with an empty submission. Report the reward and the
+  per-finding votes from /logs/verifier/evaluation.json.'
+```
+
 A task is proven when, in both protocols, the oracle scores close to `1.0` and
 an empty submission scores `0.0`. Until both hold, it is unproven.
 
-```bash
-pre-harbor verify erdos973--v1 --protocol offline --agent oracle
-```
-
 The judge needs `JUDGE_API_KEY` and `JUDGE_MODEL` in the verifier environment.
-Pass them to `harbor run`; never bake them into an image.
+Pass them to `harbor run` from `paperbench-harbor/.env`; never bake them into
+an image.
