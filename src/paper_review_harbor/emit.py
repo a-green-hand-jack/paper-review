@@ -153,16 +153,6 @@ def _write(path: Path, text: str, *, executable: bool = False) -> None:
         path.chmod(path.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
 
 
-def _manuscript_pdf(root: Path) -> str | None:
-    pdfs = [p for p in sorted(root.glob("*.pdf")) if not p.name.startswith("fig-")]
-    if not pdfs:
-        return None
-    for candidate in pdfs:
-        if candidate.stem == "main":
-            return candidate.name
-    return pdfs[0].name
-
-
 def emit_task(result: IngestResult, spec: TaskSpec, config: EmitConfig) -> Path:
     """Render one Harbor task from a staged paper version."""
     task_id = result.label
@@ -184,7 +174,7 @@ def emit_task(result: IngestResult, spec: TaskSpec, config: EmitConfig) -> Path:
         "paper_kind": spec.paper_kind,
         "notes": spec.notes.strip(),
         "main_tex": result.main_tex,
-        "pdf": _manuscript_pdf(result.root),
+        "pdf": result.manuscript_pdf,
         "bib_files": result.paper_map.bib_files,
         "min_review_chars": config.min_review_chars,
     }

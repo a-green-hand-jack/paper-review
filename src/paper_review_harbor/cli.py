@@ -10,6 +10,7 @@ rather than degrading into a weaker check.
 from __future__ import annotations
 
 import json
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -41,6 +42,7 @@ DEFAULT_PAPERS = Path("papers")
 DEFAULT_SPECS = Path("specs")
 DEFAULT_BUILD = Path("build")
 DEFAULT_TASKS = Path("tasks")
+ENVIRONMENT_NAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
 
 def _err(message: str) -> None:
@@ -331,6 +333,10 @@ def verify(
     network: Annotated[str, typer.Option(help="none | agent | scholarly")] = "none",
     model: Annotated[str, typer.Option(help="required by most real agents")] = "",
     api_host: Annotated[str, typer.Option(help="the agent's own provider host")] = "",
+    agent_env: Annotated[
+        list[str] | None,
+        typer.Option(help="env var name to pass to the agent, e.g. OPENAI_API_KEY"),
+    ] = None,
 ) -> None:
     """Run a task under Harbor, or print the command for a machine that can."""
     task_dir = tasks / DATASET_NAME / label
@@ -355,8 +361,17 @@ def verify(
     command = ["harbor", "run", "-p", str(task_dir), "-a", agent]
     if model:
         command += ["-m", model]
-    command += ["-y", *_host_args(hosts)]
-    printable = " ".join(command)
+    command += ["-y"]
+    printable_command = command.copy()
+    for name in agent_env or []:
+        if not ENVIRONMENT_NAME_RE.fullmatch(name):
+            _err(f"invalid agent environment variable name {name!r}")
+            raise typer.Exit(2)
+        command += ["--agent-env", f"{name}=${{{name}}}"]
+        printable_command += ["--agent-env", f"'{name}=${{{name}}}'"]
+    command += _host_args(hosts)
+    printable_command += _host_args(hosts)
+    printable = " ".join(printable_command)
 
     if not shutil.which("harbor") or not shutil.which("docker"):
         typer.echo(

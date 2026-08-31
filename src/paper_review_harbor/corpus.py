@@ -25,6 +25,10 @@ from pathlib import Path
 
 VERSION_SOURCE_RE = re.compile(r"^v(\d+)-source\.(?:tar\.gz|tgz|zip)$", re.IGNORECASE)
 VERSION_PDF_RE = re.compile(r"^v(\d+)\.pdf$", re.IGNORECASE)
+MANUSCRIPT_PDF_DECLARATION_RE = re.compile(
+    r"^\s*%\s*paper-review-harbor:\s*manuscript-pdf=([A-Za-z0-9][A-Za-z0-9._-]*\.pdf)\s*$",
+    re.IGNORECASE,
+)
 
 SINGLE_SOURCE_NAMES = ("source.tar.gz", "source.tgz", "source.zip")
 
@@ -70,13 +74,29 @@ class PaperVersion:
         return self.version is not None
 
 
-def _pdfs(directory: Path) -> list[Path]:
-    """Manuscript PDFs in a directory, excluding figure assets."""
-    return sorted(
-        path
-        for path in directory.glob("*.pdf")
-        if path.is_file() and not path.name.startswith("fig-")
-    )
+def _pdfs(directory: Path, names: list[str]) -> list[Path]:
+    """Return root PDFs whose names explicitly associate them with the source.
+
+    A root PDF is not presumed to be a manuscript: source archives frequently
+    carry figure assets there. Versioned papers use ``vN.pdf``; other callers
+    provide only source stems, canonical manuscript names, project-declared
+    PDF names, or matching companion-document stems. Unknown names are left
+    unstaged, and the input order defines deterministic preference.
+    """
+    return [path for name in names if (path := directory / name).is_file()]
+
+
+def declared_manuscript_pdfs(tex: Path) -> list[str]:
+    """Read exact project declarations: `% paper-review-harbor: manuscript-pdf=NAME.pdf`."""
+    try:
+        lines = tex.read_text(encoding="utf-8", errors="replace").splitlines()
+    except OSError:
+        return []
+    return [
+        match.group(1)
+        for line in lines
+        if (match := MANUSCRIPT_PDF_DECLARATION_RE.match(line))
+    ]
 
 
 def _private_in_manuscript_dir(directory: Path) -> list[Path]:
@@ -130,7 +150,10 @@ def _discover_single_archive(paper_dir: Path) -> PaperVersion | None:
     for name in SINGLE_SOURCE_NAMES:
         candidate = paper_dir / name
         if candidate.is_file():
-            pdfs = _pdfs(paper_dir)
+            pdfs = _pdfs(
+                paper_dir,
+                [f"{paper_dir.name}.pdf", "accepted-manuscript.pdf", "manuscript.pdf", "paper.pdf"],
+            )
             return PaperVersion(
                 slug=paper_dir.name,
                 version=None,
@@ -145,9 +168,10 @@ def _discover_single_archive(paper_dir: Path) -> PaperVersion | None:
 
 def _discover_manuscript_dir(paper_dir: Path) -> PaperVersion | None:
     inner = paper_dir / "paper"
-    if not (inner / "main.tex").is_file():
+    main = inner / "main.tex"
+    if not main.is_file():
         return None
-    pdfs = _pdfs(inner)
+    pdfs = _pdfs(inner, [*declared_manuscript_pdfs(main), "main.pdf"])
     return PaperVersion(
         slug=paper_dir.name,
         version=None,
@@ -163,7 +187,13 @@ def _discover_bare_tex(paper_dir: Path) -> PaperVersion | None:
     main = paper_dir / "main.tex"
     if not main.is_file():
         return None
-    pdfs = _pdfs(paper_dir)
+    companion_stems = sorted(
+        path.stem for path in paper_dir.glob("*.md") if path.is_file() and path.name != "info.md"
+    )
+    pdfs = _pdfs(
+        paper_dir,
+        ["main.pdf", f"{paper_dir.name}.pdf", *(f"{stem}.pdf" for stem in companion_stems)],
+    )
     return PaperVersion(
         slug=paper_dir.name,
         version=None,

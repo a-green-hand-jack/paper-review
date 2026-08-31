@@ -21,12 +21,13 @@ import json
 import re
 import shutil
 import tarfile
+import unicodedata
 import zipfile
 from collections.abc import Iterable
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
-from .corpus import PaperVersion
+from .corpus import PaperVersion, declared_manuscript_pdfs
 
 #: arXiv ships this alongside the sources; it names the toplevel file.
 ARXIV_README = "00README.json"
@@ -95,6 +96,7 @@ class IngestResult:
     label: str
     root: Path
     main_tex: str
+    manuscript_pdf: str | None
     paper_map: PaperMap
     excluded: tuple[str, ...]
     sanitised: tuple[str, ...]
@@ -151,6 +153,54 @@ def _materialise(version: PaperVersion, destination: Path) -> None:
         shutil.copy2(version.source, destination / version.source.name)
     else:  # pragma: no cover - guarded by corpus.py
         raise IngestError(f"unknown source kind {version.source_kind!r}")
+
+
+#: What a sibling PDF is renamed to when staged. Faithful names would leak:
+#: staging `v1.pdf` tells the agent its manuscript is one of several versions,
+#: which is a hint about where to look for the answer.
+STAGED_PDF_NAME = "paper.pdf"
+CANONICAL_BUNDLED_PDF_NAMES = ("main.pdf", "paper.pdf", "manuscript.pdf")
+
+
+def bundled_manuscript_pdf(root: Path, version: PaperVersion, main_tex: str) -> Path | None:
+    """Return a declared or canonical manuscript PDF present in the source bundle."""
+    names = [
+        *declared_manuscript_pdfs(root / main_tex),
+        Path(main_tex).with_suffix(".pdf").as_posix(),
+        *CANONICAL_BUNDLED_PDF_NAMES,
+    ]
+    for name in dict.fromkeys(names):
+        candidate = root / name
+        if candidate.is_file():
+            return candidate
+    if version.pdf is None or version.source_kind != "directory":
+        return None
+    try:
+        relative = version.pdf.relative_to(version.source)
+    except ValueError:  # pragma: no cover - source_kind guards this shape
+        return None
+    candidate = root / relative
+    return candidate if candidate.is_file() else None
+
+
+def stage_sibling_pdf(root: Path, version: PaperVersion, main_tex: str) -> str | None:
+    """Copy in the corpus PDF unless the source bundle carries its manuscript.
+
+    arXiv e-print bundles hold source only; the compiled PDF sits beside the
+    tarball in the corpus, so eleven of the papers here would otherwise reach
+    the agent as LaTeX with no rendered form at all. A reviewer reads the PDF,
+    and `poppler-utils` is in the image precisely so figures can be rasterised
+    and looked at -- neither of which works if compiling from source is the
+    only way to get one.
+    """
+    bundled = bundled_manuscript_pdf(root, version, main_tex)
+    if bundled is not None:
+        return bundled.relative_to(root).as_posix()
+    if version.pdf is None or not version.pdf.is_file():
+        return None
+    destination = root / STAGED_PDF_NAME
+    shutil.copy2(version.pdf, destination)
+    return destination.name
 
 
 def _strip_private(root: Path, version: PaperVersion) -> list[str]:
@@ -280,6 +330,50 @@ def _read_tex(path: Path) -> str:
     return strip_tex_comments(path.read_text(encoding="utf-8", errors="replace"))
 
 
+#: LaTeX accent macros to the combining mark they apply. Applying the mark and
+#: letting Unicode normalisation compose it is what keeps this table short: one
+#: entry per accent rather than one per accent-letter pair.
+ACCENT_MARKS = {
+    "`": "\u0300",  # grave
+    "'": "\u0301",  # acute
+    "^": "\u0302",  # circumflex
+    "~": "\u0303",  # tilde
+    '"': "\u0308",  # diaeresis
+    "H": "\u030b",  # Hungarian double acute -- Erd\H{o}s
+    "c": "\u0327",  # cedilla
+    "v": "\u030c",  # caron
+    "u": "\u0306",  # breve
+    "=": "\u0304",  # macron
+    ".": "\u0307",  # dot above
+    "r": "\u030a",  # ring above
+    "k": "\u0328",  # ogonek
+    "d": "\u0323",  # dot below
+    "b": "\u0331",  # bar under
+}
+
+#: Formatting wrappers whose argument is the text. `\texorpdfstring` is handled
+#: separately because it takes two arguments and the *second* is the plain form.
+TEXT_WRAPPERS = frozenset(
+    {
+        "emph", "text", "textit", "textbf", "textrm", "textsf", "texttt", "textsc",
+        "textnormal", "mathrm", "mathcal", "mathbf", "mathit", "mathsf", "operatorname",
+        "lowercase", "uppercase", "mbox", "hbox",
+    }
+)
+
+#: Standalone macros with an obvious textual meaning.
+SYMBOL_MACROS = {
+    "&": "&", "%": "%", "_": "_", "$": "$", "#": "#", "{": "{", "}": "}",
+    "ldots": "…", "dots": "…", "textendash": "–", "textemdash": "—",
+    "ss": "ß", "ae": "æ", "oe": "œ", "aa": "å", "o": "ø", "l": "ł", "i": "ı",
+}
+
+#: A control *word* (`\emph`, all letters) absorbs the whitespace after it; a
+#: control *symbol* (`\%`, `\&`) does not, and eating that space turns
+#: `50\% \& more` into `50%&more`.
+_MACRO_RE = re.compile(r"\\(?:([a-zA-Z]+)\s*|(.))", re.DOTALL)
+
+
 def _balanced_group(text: str, start: int) -> tuple[str, int] | None:
     """Contents of the brace group opening at ``start``, and the index past it."""
     depth, index = 1, start
@@ -309,6 +403,82 @@ def _strip_title_notes(raw: str) -> str:
     return raw
 
 
+def _argument(text: str, index: int) -> tuple[str, int] | None:
+    """The macro argument at `index`, brace-delimited or a single character."""
+    if index < len(text) and text[index] == "{":
+        return _balanced_group(text, index + 1)
+    if index < len(text):
+        return text[index], index + 1
+    return None
+
+
+def latex_to_text(source: str) -> str:
+    r"""Render a LaTeX fragment as readable text, leaving alone what it cannot.
+
+    Titles reach task metadata, the agent's instruction and the dataset card,
+    all of them read by people, so `Erd\H{o}s Problem 973` and
+    `Type-\texorpdfstring{$B$}{B} Root Posets` should not survive as written.
+
+    Deliberately conservative: a macro not in the tables passes through with its
+    backslash intact. A half-right conversion that silently drops a symbol is
+    worse than a title that visibly still holds LaTeX, because only the second
+    kind gets noticed and fixed.
+    """
+    out: list[str] = []
+    index = 0
+    while index < len(source):
+        char = source[index]
+
+        if char == "$":  # math delimiters; the content is usually plain enough
+            index += 1
+            continue
+        if char in "{}":
+            index += 1
+            continue
+        if char != "\\":
+            out.append(char)
+            index += 1
+            continue
+
+        match = _MACRO_RE.match(source, index)
+        if match is None:
+            out.append(char)
+            index += 1
+            continue
+        name, index = match.group(1) or match.group(2), match.end()
+
+        if name == "texorpdfstring":
+            # (TeX form, plain form) -- the second argument exists for this.
+            first = _argument(source, index)
+            second = _argument(source, first[1]) if first else None
+            if second:
+                out.append(latex_to_text(second[0]))
+                index = second[1]
+            continue
+        if name in ACCENT_MARKS:
+            argument = _argument(source, index)
+            if argument:
+                out.append(unicodedata.normalize("NFC", argument[0] + ACCENT_MARKS[name]))
+                index = argument[1]
+            continue
+        if name in TEXT_WRAPPERS:
+            argument = _argument(source, index)
+            if argument:
+                out.append(latex_to_text(argument[0]))
+                index = argument[1]
+            continue
+        if name in SYMBOL_MACROS:
+            out.append(SYMBOL_MACROS[name])
+            continue
+
+        # Unknown macro: keep it visible rather than guess.
+        out.append("\\" + name)
+
+    text = "".join(out)
+    text = text.replace("---", "—").replace("--", "–")
+    return re.sub(r"\s+", " ", text).strip()
+
+
 def extract_title(text: str) -> str | None:
     r"""The manuscript's own title, brace-matched out of ``\title{...}``.
 
@@ -329,8 +499,7 @@ def extract_title(text: str) -> str | None:
     if group is None:
         return None
     raw = _strip_title_notes(group[0]).replace("\\\\", " ")
-    cleaned = re.sub(r"\s+", " ", raw).strip()
-    return cleaned or None
+    return latex_to_text(raw) or None
 
 
 def title_from_graph(root: Path, tex_files: list[Path]) -> str | None:
@@ -444,6 +613,7 @@ def ingest(version: PaperVersion, build_root: Path) -> IngestResult:
     sanitised = strip_bib_preamble(root)
 
     main = find_main_tex(root)
+    manuscript_pdf = stage_sibling_pdf(root, version, main)
     paper_map = build_map(root, version.label, main)
 
     source_sha = (
@@ -458,6 +628,7 @@ def ingest(version: PaperVersion, build_root: Path) -> IngestResult:
         label=version.label,
         root=root,
         main_tex=main,
+        manuscript_pdf=manuscript_pdf,
         paper_map=paper_map,
         excluded=tuple(excluded),
         sanitised=tuple(sanitised),

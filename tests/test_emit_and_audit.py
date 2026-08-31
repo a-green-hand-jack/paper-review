@@ -5,6 +5,7 @@ import shutil
 import subprocess
 import sys
 import tomllib
+import zipfile
 from pathlib import Path
 
 import pytest
@@ -183,6 +184,183 @@ class TestAuditCatchesLeaks:
         (task_dir / "tests" / "check_submission.py").unlink()
         kinds = {v.kind for v in audit_task(task_dir, version)}
         assert "structure" in kinds
+
+    def test_catches_a_missing_compiled_pdf_declaration(self, emitted) -> None:
+        version, task_dir = emitted
+        instruction = task_dir / "instruction.md"
+        instruction.write_text(
+            instruction.read_text(encoding="utf-8").replace(
+                " and `main.pdf` as the compiled PDF", ""
+            ),
+            encoding="utf-8",
+        )
+        kinds = {v.kind for v in audit_task(task_dir, version)}
+        assert "compiled-pdf" in kinds
+
+    def test_catches_a_missing_declared_compiled_pdf(self, emitted) -> None:
+        version, task_dir = emitted
+        (task_dir / "environment" / "paper" / "main.pdf").unlink()
+        kinds = {v.kind for v in audit_task(task_dir, version)}
+        assert "compiled-pdf" in kinds
+
+    def test_accepts_a_bundled_archive_manuscript_over_its_sibling_pdf(
+        self, corpus: Path, tmp_path: Path
+    ) -> None:
+        source = corpus / "single_archive" / "source.zip"
+        bundled = b"%PDF-1.4 bundled manuscript"
+        with zipfile.ZipFile(source, "a") as zipped:
+            zipped.writestr("main.pdf", bundled)
+
+        (version,) = discover_paper(corpus / "single_archive")
+        assert version.pdf is not None
+        result = ingest(version, tmp_path / "build")
+        task_dir = emit_task(
+            result, spec_for(version.label), EmitConfig(tasks_root=tmp_path / "tasks")
+        )
+        assert (task_dir / "environment" / "paper" / "main.pdf").read_bytes() == bundled
+        assert audit_task(task_dir, version) == []
+
+    def test_accepts_an_archive_pdf_from_the_readme_declared_toplevel_tex(
+        self, corpus: Path, tmp_path: Path
+    ) -> None:
+        source = corpus / "single_archive" / "source.zip"
+        bundled = b"%PDF-1.4 letter manuscript"
+        with zipfile.ZipFile(source, "w") as zipped:
+            zipped.writestr(".DS_Store", b"ignored root metadata")
+            zipped.writestr(
+                "wrapped/00README.json",
+                json.dumps({"sources": [{"usage": "toplevel", "filename": "letter.tex"}]}),
+            )
+            zipped.writestr(
+                "wrapped/helper.tex",
+                "\\documentclass{article}\\begin{document}helper\\end{document}",
+            )
+            zipped.writestr(
+                "wrapped/letter.tex",
+                "\\documentclass{article}\\begin{document}letter\\end{document}",
+            )
+            zipped.writestr("wrapped/letter.pdf", bundled)
+            zipped.writestr("wrapped/main.pdf", b"%PDF-1.4 generic")
+
+        (version,) = discover_paper(corpus / "single_archive")
+        result = ingest(version, tmp_path / "build")
+        assert result.main_tex == "letter.tex"
+        assert result.manuscript_pdf == "letter.pdf"
+        task_dir = emit_task(
+            result, spec_for(version.label), EmitConfig(tasks_root=tmp_path / "tasks")
+        )
+        assert audit_task(task_dir, version) == []
+
+    def test_does_not_flatten_a_wrapped_archive_with_an_empty_sibling_directory(
+        self, corpus: Path, tmp_path: Path
+    ) -> None:
+        source = corpus / "single_archive" / "source.zip"
+        with zipfile.ZipFile(source, "w") as zipped:
+            zipped.writestr(
+                "wrapped/00README.json",
+                json.dumps({"sources": [{"usage": "toplevel", "filename": "letter.tex"}]}),
+            )
+            zipped.writestr(
+                "wrapped/helper.tex",
+                "\\documentclass{article}\\begin{document}helper\\end{document}",
+            )
+            zipped.writestr(
+                "wrapped/letter.tex",
+                "\\documentclass{article}\\begin{document}letter\\end{document}",
+            )
+            zipped.writestr("wrapped/letter.pdf", b"%PDF-1.4 letter manuscript")
+            zipped.writestr("empty/", b"")
+
+        (version,) = discover_paper(corpus / "single_archive")
+        result = ingest(version, tmp_path / "build")
+        assert result.main_tex == "wrapped/helper.tex"
+        assert result.manuscript_pdf == "paper.pdf"
+        task_dir = emit_task(
+            result, spec_for(version.label), EmitConfig(tasks_root=tmp_path / "tasks")
+        )
+        assert audit_task(task_dir, version) == []
+
+    def test_rejects_an_archive_only_figure_as_the_compiled_pdf(
+        self, tmp_path: Path
+    ) -> None:
+        paper = tmp_path / "papers" / "archive_only_figure"
+        paper.mkdir(parents=True)
+        with zipfile.ZipFile(paper / "source.zip", "w") as zipped:
+            zipped.writestr(
+                "main.tex", "\\documentclass{article}\\begin{document}x\\end{document}"
+            )
+            zipped.writestr("fig1a.pdf", b"%PDF-1.4 figure")
+
+        (version,) = discover_paper(paper)
+        assert version.pdf is None
+        result = ingest(version, tmp_path / "build")
+        task_dir = emit_task(
+            result, spec_for(version.label), EmitConfig(tasks_root=tmp_path / "tasks")
+        )
+        instruction = task_dir / "instruction.md"
+        instruction.write_text(
+            instruction.read_text(encoding="utf-8")
+            + "\nThe compiled PDF is `fig1a.pdf` and `fig1a.pdf` as the compiled PDF.\n",
+            encoding="utf-8",
+        )
+
+        kinds = {v.kind for v in audit_task(task_dir, version)}
+        assert "manuscript-pdf" in kinds
+
+    def test_rejects_a_directory_only_figure_as_the_compiled_pdf(self, tmp_path: Path) -> None:
+        paper = tmp_path / "papers" / "directory_only_figure" / "paper"
+        paper.mkdir(parents=True)
+        (paper / "main.tex").write_text(
+            "\\documentclass{article}\\begin{document}x\\end{document}", encoding="utf-8"
+        )
+        (paper / "fig1a.pdf").write_bytes(b"%PDF-1.4 figure")
+
+        (version,) = discover_paper(paper.parent)
+        assert version.pdf is None
+        result = ingest(version, tmp_path / "build")
+        task_dir = emit_task(
+            result, spec_for(version.label), EmitConfig(tasks_root=tmp_path / "tasks")
+        )
+        instruction = task_dir / "instruction.md"
+        instruction.write_text(
+            instruction.read_text(encoding="utf-8")
+            + "\nThe compiled PDF is `fig1a.pdf` and `fig1a.pdf` as the compiled PDF.\n",
+            encoding="utf-8",
+        )
+
+        kinds = {v.kind for v in audit_task(task_dir, version)}
+        assert "manuscript-pdf" in kinds
+
+    @pytest.mark.parametrize(
+        ("slug", "figure"),
+        [
+            ("trapping_centers_superfluid_mott_insulator", "fig1a.pdf"),
+            ("superconductivity_uniform_electron_gas", "Integral_Vc.pdf"),
+        ],
+    )
+    def test_catches_a_figure_declared_instead_of_an_accepted_manuscript(
+        self, real_papers: Path, tmp_path: Path, slug: str, figure: str
+    ) -> None:
+        (version,) = discover_paper(real_papers / slug)
+        assert version.pdf is not None
+        assert version.pdf.name == "accepted-manuscript.pdf"
+        result = ingest(version, tmp_path / "build")
+        task_dir = emit_task(
+            result, spec_for(version.label), EmitConfig(tasks_root=tmp_path / "tasks")
+        )
+        paper = task_dir / "environment" / "paper"
+        (paper / figure).write_bytes(b"%PDF-1.4 figure")
+        instruction = task_dir / "instruction.md"
+        instruction.write_text(
+            instruction.read_text(encoding="utf-8").replace(
+                f"`{result.manuscript_pdf}` as the compiled PDF",
+                f"`{figure}` as the compiled PDF",
+            ),
+            encoding="utf-8",
+        )
+
+        kinds = {v.kind for v in audit_task(task_dir, version)}
+        assert "manuscript-pdf" in kinds
 
 
 class TestChecker:
