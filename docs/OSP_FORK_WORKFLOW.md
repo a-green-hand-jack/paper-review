@@ -98,6 +98,10 @@ The corpus is: the 15 named papers, `erdos973` v1/v2/v3,
 inside `figures/` and does not begin with `fig-` is one task; each version
 pair lives in a directory of `v*.pdf` files for version comparison.
 
+The version-set papers are also mirrored in the public Hugging Face dataset
+`Jack-Jieke-Wu/osp-benchmark` (same `papers/` layout). Review trails are
+archived separately in the private `Jack-Jieke-Wu/osp-trails`.
+
 When the version PDFs and completed local trails are available, run the
 version comparison against existing trails without rerunning reviews. The
 classic three-version form:
