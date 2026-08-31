@@ -85,6 +85,32 @@ def workspace_opencode_config() -> str:
                 "enabled": True,
             }
         },
+        # Reviewing a PDF means rasterising pages to inspect figures, and
+        # opencode's own scratch location for that is /tmp/opencode. Without an
+        # explicit allow it prompts, the batch has no one to answer, and the
+        # call is auto-rejected -- which does not degrade gracefully: the run
+        # aborts and produces no review at all. Six of ten papers hit this.
+        #
+        # The secret denials are repeated here on purpose. A project-level
+        # `permission` block may replace the user's global one rather than
+        # merge with it, and silently dropping their credential denials to buy
+        # a temp directory would be a bad trade.
+        "permission": {
+            "external_directory": {
+                "*": "ask",
+                "/tmp/opencode/**": "allow",
+            },
+            "read": {
+                "*": "allow",
+                "*.env": "deny",
+                "*.env.*": "deny",
+                "*.env.example": "allow",
+                "*auth.json": "deny",
+                "*.config/opencode/*-key": "deny",
+                "*.config/opencode/account-keys/*.key": "deny",
+                "*.local/share/opencode/auth.json": "deny",
+            },
+        },
     }
     return json.dumps(config, indent=2) + "\n"
 
