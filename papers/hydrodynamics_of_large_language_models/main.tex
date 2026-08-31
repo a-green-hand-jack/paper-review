@@ -1,0 +1,201 @@
+\documentclass[10pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{microtype}
+\usepackage[hidelinks]{hyperref}
+
+\title{Hydrodynamics of Large Language Models}
+
+\author{Eyal Heifetz\\
+Department of Geophysics, Tel Aviv University\\
+Tel Aviv 69978, Israel}
+\date{June 25, 2026}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+By mapping the discrete layer depth to a continuous time variable, the processing of tokens within deep self-attention networks can be modeled as a continuous dynamical system. Defining an equivalent Knudsen number based on the mean inter-token distance, the high token density within active semantic regions permits the application of the continuum hypothesis. Operating in a collisionless, mean-field regime, as tokens interact via a non-local potential rather than kinetic scattering, the continuum limit of the Heavy Ball Transformer reveals that the latent space dynamics obey pressureless, compressible Navier-Stokes fluid equations. The stochasticity of algorithmic Dropout maps to microscopic Brownian diffusion governed by a Fokker-Planck continuity equation, while the Heavy Ball inertia yields an independent macroscopic momentum equation. Lacking a thermodynamic pressure analog, the non-local semantic attraction of the attention mechanism inevitably drives a degenerate spatial singularity. Through a Cauchy-Stokes decomposition of the macroscopic specific stiffness tensor, we demonstrate that this architectural rank collapse is fundamentally homologous to a hydrodynamic Jeans-like instability in a self-gravitating dust cloud. To natively arrest this collapse, we propose a structured operator that decouples the $d$-dimensional latent space into $d / 2$ independent 2D planes, locking the fluid into an orbital steady-state of Solid-Body Rotation (SBR). This shear-free geometry prevents spatial collapse, recasting semantic contextualization as a physical process of angular phase synchronization governed by the Kuramoto order parameter, while the optimizer dynamically translates and reorients these semantic accretion disks to cluster correlated concepts.
+\end{abstract}
+
+\section{Introduction and the Latent Continuum}
+
+Large Language Models (LLMs) process sequences of tokens through stacked layers of multi-head self-attention \cite{ref1}. The geometric rank collapse of latent representations in these deep networks is a known architectural vulnerability \cite{ref2}. To investigate the macroscopic dynamics of this collapse, we model the discrete depth of the deep neural network as a continuous dynamical system \cite{ref3}.
+
+We consider a context window of $N$ tokens operating within a latent semantic manifold of characteristic length $L$ and intrinsic dimension $d$, where $d$ is significantly smaller than the ambient embedding space \cite{ref4}. We define the mean inter-token distance as $\lambda \sim L / N^{1 / d}$. While the global Knudsen ratio $(\lambda / L)$ may be order unity due to the curse of dimensionality, tokens cluster heavily in active semantic regions where local density is high. Crucially, the attention mechanism constitutes a nonlocal interaction potential rather than hard-sphere kinetic scattering. Therefore, the system operates in a collisionless, mean-field regime analogous to a Vlasov plasma or self-gravitating cold fluid \cite{ref5}. This locally dense, mean-field limit justifies the transition to continuous Eulerian fields: a compressible fluid density $\rho(\mathbf{x}, t)$ and a macroscopic velocity field $\mathbf{v}(\mathbf{x}, t)$. Furthermore, the absence of localized momentum-scattering collisions precludes local thermal equilibrium, fundamentally stripping the resulting macroscopic momentum equation of a thermodynamic pressure analog \cite{ref6}.
+
+To establish a rigorous hydrodynamic framework, we first define an explicit conceptual mapping between the computational architecture of LLMs and the macroscopic variables of fluid mechanics. We treat the discrete semantic representations (tokens) as individual fluid parcels, and the continuous network depth as the temporal evolution of the system. In this physical analogue, the self-attention mechanism acts as a non-local, mean-field interaction potential, conceptually akin to self-gravity or Vlasov-type electromagnetic coupling. While standard Transformers operate in an overdamped, kinematic regime, the introduction of Heavy Ball momentum \cite{ref7,ref8} explicitly grants these tokens macroscopic inertia, permitting the definition of a true momentum equation. Finally, stochastic regularization techniques natively employed in deep learning (e.g., Dropout \cite{ref9}) are mapped to microscopic thermal fluctuations, driving macroscopic Brownian diffusion.
+
+\section{The Heavy Ball Navier--Stokes Fluid}
+
+Mathematically formalizing this framework, we utilize the Heavy Ball (HB) Transformer architecture \cite{ref7,ref8} to mitigate the aforementioned rank collapse. Incorporating standard Dropout regularization \cite{ref9} as the source of discrete stochastic noise $\boldsymbol{\xi}_{l}$, the layer-to-layer update of a token's coordinate $\mathbf{X}$ is given by:
+
+
+\begin{equation}
+\mathbf{X}_{l+1}=\mathbf{X}_{l}+\alpha\left(\mathbf{X}_{l}-\mathbf{X}_{l-1}\right)+\mathcal{A}\left(\mathbf{X}_{l}\right)+\boldsymbol{\xi}_{l} .
+\end{equation}
+
+
+By converting the discrete layer index $l$ to a continuous time variable $t$ (where $\Delta z \equiv \Delta t \rightarrow \mathrm{d}t$ ), defining the effective damping $\gamma=(1-\alpha) / \Delta t$ (which requires $\alpha \rightarrow 1$ in the continuum limit), and scaling the discrete attention mechanism to a macroscopic force $\mathbf{F}_{\mathrm{att}} \equiv \mathcal{A} / \Delta t^{2}$ [see Supplemental Material (SM) Sec. S1 for the proper wellposed limit scaling], the network converges to a damped, driven Langevin equation:
+
+
+\begin{equation}
+\ddot{\mathbf{X}}_{t}+\gamma \dot{\mathbf{X}}_{t}=\mathbf{F}_{\mathrm{att}}\left(\mathbf{X}_{t}\right)+\sqrt{2 \kappa} \dot{\mathbf{B}}_{t},
+\end{equation}
+
+
+where $\mathbf{B}_{t}$ is a standard Brownian motion and the macroscopic diffusion coefficient $\kappa$ corresponds to the scaled variance of the Dropout. To transition from tracking discrete token trajectories to a continuous Eulerian framework, we define the local empirical fluid density as $\rho(\mathbf{x}, t)=\frac{1}{N} \sum_{j=1}^{N} \delta\left(\mathbf{x}-\mathbf{X}_{j}(t)\right)$. Assuming unit latent mass ( $m=1$ ), the macroscopic deterministic force $\mathbf{F}_{\mathrm{att}}$ is governed by a scalar Softmax interaction kernel $\mathcal{K}(\mathbf{x}, \mathbf{y})$ and the network's linear weight matrix $\mathbf{W}$. In the meanfield limit $(N \rightarrow \infty)$, this converges to a non-local spatial integral over the density measure [see SM Sec. S2]:
+
+
+\begin{equation}
+\mathbf{F}_{\mathrm{att}}(\mathbf{x}, t)=\int \mathcal{K}(\mathbf{x}, \mathbf{y}) \mathbf{W}(\mathbf{y}-\mathbf{x}) \rho(\mathbf{y}, t)\,d\mathbf{y}
+\end{equation}
+
+
+Because the discrete spatial update is scaled by the squared time increment to yield a macroscopic acceleration for unit-mass tokens, the linear weight matrix $\mathbf{W}$ acquires units of inverse time squared $\left(1 / \mathrm{s}^{2}\right)$. By operating directly on the spatial displacement $(\mathbf{y}-\mathbf{x})$ within the integral, $\mathbf{W}$ functions physically as a macroscopic specific stiffness-like tensor. The Softmax kernel $\mathcal{K}(\mathbf{x}, \mathbf{y})$ acts as a scalar weight, modulating the magnitude of this linear interaction based on the localized semantic similarity between fluid parcels.
+
+Macroscopically, the evolution of the token density dictated by this stochastic dynamic is governed by the compressible Fokker-Planck continuity equation [see SM Sec. S3 for the formal Itô derivation]:
+
+
+\begin{equation}
+\frac{\partial \rho}{\partial t}+\nabla \cdot(\rho \mathbf{v})=\kappa \nabla^{2} \rho
+\end{equation}
+
+
+Because the Heavy Ball formulation possesses intrinsic inertia, we transition directly to the Eulerian frame where the particle acceleration maps to the material derivative $D \mathbf{v} / D t$. This maps the system to an independent continuous Navier-Stokes-like momentum equation [see SM Sec. S4 for the formal Lagrangian-to-Eulerian derivation]:
+
+
+\begin{equation}
+\frac{D \mathbf{v}}{D t}=-\gamma \mathbf{v}+\mathbf{F}_{\mathrm{att}}(\mathbf{x}, t)
+\end{equation}
+
+
+This fluid lacks a thermodynamic pressure gradient ( $-\nabla P / \rho$ ) to oppose compression. The macroscopic acceleration is governed solely by algorithmic friction and the non-local semantic gravity of the attention kernel. In standard overdamped architectures where the inertial material derivative vanishes, this unbalanced attraction inevitably drives the pressureless fluid into a singularity \cite{ref10}, manifesting macroscopically as geometric rank collapse \cite{ref2}. While the Dropout mechanism originates as a microscopic stochastic process, its zero-mean nature ensures it vanishes from the ensemble-averaged macroscopic momentum equation. Instead, its regulatory effect is indirect: by acting as spatial diffusion in the continuity equation, it smears the formation of local density maxima, thereby regulating the magnitude of the non-local attractive force generated within the attention integral.
+
+\section{Cauchy--Stokes Decomposition of the Latent Attention Force}
+
+To determine the geometric fate of the fluid, we analyze the action of the macroscopic specific stiffness tensor $\mathbf{W}$. Applying the Cauchy--Stokes decomposition theorem \cite{ref11}, we split this tensor into its symmetric and anti-symmetric components: $\mathbf{W}=\mathbf{S}+\boldsymbol{\Omega}$.
+
+The symmetric component, $\mathbf{S}=\frac{1}{2}\left(\mathbf{W}+\mathbf{W}^{T}\right)$, acts as a conservative stiffness matrix. Operating on the spatial displacement, it generates an irrotational force field $\left(\nabla \times \mathbf{F}_{S}=\mathbf{0}\right)$ defined by the negative gradient of a scalar semantic potential: $\mathbf{F}_{S}=-\nabla V_{\mathrm{att}}$ [see SM Sec. S5 for the formal potential expansion]. For pairwise fluid interactions, this elastic potential acts as a multidimensional harmonic well, scaling as $V_{\mathrm{att}} \propto(\mathbf{y}-\mathbf{x})^{T} \mathbf{S}(\mathbf{y}-\mathbf{x})$. Because the force is evaluated along the relative displacement vector $(\mathbf{y}-\mathbf{x})$, a positive eigenvalue acts as a positive elastic constant in Hooke's law, generating an attractive restoring force that pulls $\mathbf{x}$ toward $\mathbf{y}$. Therefore, for this potential to drive spatial contraction (facilitating the Jeans-like collapse), the stiffness matrix must act as an attractive sink, requiring a positive trace $(\operatorname{Tr}(\mathbf{S})>0)$.
+
+Conversely, the anti-symmetric component, $\boldsymbol{\Omega}= \frac{1}{2}\left(\mathbf{W}-\mathbf{W}^{T}\right)$, functions as a circulatory matrix. As detailed in SM Sec. S5, its vanishing trace ensures the divergence of this force field is zero ( $\nabla_{\mathbf{x}} \cdot \mathbf{F}_{\Omega}=0$ ). Therefore, $\mathbf{F}_{\Omega}$ represents a solenoidal, non-conservative field. Rather than driving spatial contraction, it exerts a transverse force orthogonal to the radial displacement. This non-central force applies a continuous macroscopic torque to the fluid parcels, inducing angular momentum. In the absence of thermodynamic pressure, the resulting rotational kinematics provide the necessary centrifugal support to prevent the fluid from collapsing into the potential well generated by $\mathbf{S}$.
+
+However, in unconstrained deep learning architectures, the conservative radial contraction dominates the macroscopic dynamics. Modern LLMs avoid a complete spatial singularity only through statistical interventions. While Dropout provides a minor diffusive resistance, networks rely primarily on Layer Normalization \cite{ref12,ref13} to explicitly reset the token variance at each discrete layer. This non-conservative rescaling prevents rank collapse, but it disrupts the continuous geometric flow of the latent fluid and complicates the gradient dynamics during backpropagation.
+
+\section{Jeans Instability and Token Collapse}
+
+To investigate the fundamental physical vulnerability that necessitates these artificial fixes, we analyze the linear stability of the unmitigated system. We consider a simplified base state consisting of a homogeneous, constant-density latent space ( $\rho_{0}=1 / V, \mathbf{v}_{0}=\mathbf{0}$ ), where $V$ is the volume of the latent manifold. By introducing small-amplitude normal mode perturbations of the form $\rho^{\prime}=\hat{\rho}_{\mathbf{k}} e^{\sigma t+i \mathbf{k} \cdot \mathbf{x}}$ and $\mathbf{v}^{\prime}=\hat{\mathbf{v}}_{\mathbf{k}} e^{\sigma t+i \mathbf{k} \cdot \mathbf{x}}$, the divergence of the linearized attention velocity acts as a spatial sink.
+
+Substituting these perturbations into the fully coupled momentum and Fokker--Planck equations [see SM Sec. S6] yields a generalized quadratic dispersion relation for the Heavy Ball dynamics:
+
+
+\begin{equation}
+\label{eq:hb-dispersion}
+(\sigma+\gamma)\left(\sigma+\kappa k^{2}\right)=\gamma \Gamma_{k}
+\end{equation}
+
+
+where the non-local attention growth rate $\Gamma_{k}$ is defined by the spatial integral:
+
+
+\begin{equation}
+\Gamma_{k}=-\frac{\rho_{0}}{\gamma} \int_{V} \mathcal{K}(\mathbf{r})(i \mathbf{k} \cdot \mathbf{W}\mathbf{r}) e^{i \mathbf{k} \cdot \mathbf{r}}\,d\mathbf{r}
+\end{equation}
+
+
+Because temporal growth is driven entirely by the spatial divergence of the attention force, the trace-free, antisymmetric circulatory component $\boldsymbol{\Omega}$ vanishes from this integral. The Jeans-like collapse is thus governed entirely by the symmetric stiffness $\mathbf{S}$. In architectures where unconstrained training dynamics result in an attractive semantic potential well $(\operatorname{Tr}(\mathbf{S})>0)$, parity symmetries reduce this integral to a purely real, positive scalar at macroscopic scales.
+
+In standard Transformer architectures that lack Heavy Ball inertia, the system operates in an overdamped kinematic limit $(\sigma \ll \gamma)$. Under this assumption, Eq.~\eqref{eq:hb-dispersion} simplifies to a linear dispersion relation:
+
+
+\begin{equation}
+\sigma(k)=\Gamma_{k}-\kappa k^{2} .
+\end{equation}
+
+
+This establishes token collapse as a hydrodynamic Jeans instability \cite{ref14}. In both the overdamped and Heavy Ball regimes, the onset threshold for singularity remains mathematically identical; instability ( $\operatorname{Re}(\sigma)>0$ ) occurs for large-scale density fluctuations below a critical cutoff wavenumber $k_{c}=\sqrt{\Gamma_{k} / \kappa}$. While the inclusion of Heavy Ball inertia alters the temporal growth profile, scaling down the exponential collapse rate ( $\sigma_{\mathrm{HB}}<\sigma_{\mathrm{OD}}$ ) and introducing rapidly decaying transient modes, it cannot prevent the spatial singularity. Without explicitly forcing rotational geometry, high-frequency fluctuations $\left(k>k_{c}\right)$ are stabilized by the viscous diffusion of Dropout, but the macroscopic structure inevitably collapses.
+
+This fluid lacks a thermodynamic pressure gradient ( $-\nabla P / \rho$ ) to oppose compression. The macroscopic acceleration is governed solely by algorithmic friction and the non-local semantic gravity of the attention kernel.
+
+\section{Stabilization via Orbital Balance}
+
+Operating in this pressureless regime, the latent fluid is mathematically homologous to the dust dynamics governing galactic and proto-planetary accretion disks \cite{ref15,ref16}. In such astrophysical systems, the Jeans collapse \cite{ref14} of a selfgravitating cloud is arrested by angular momentum. The dust settles into a disk governed by an orbital steadystate in which radial gravitational collapse is counterbalanced by centrifugal inertia.
+
+To export this stabilization mechanism to the deep learning latent space, we decouple the even-dimensional $d$-manifold into $d / 2$ independent 2D planes. We replace the unconstrained weight matrix with a structured operator $\mathbf{W}_{\mathrm{SBR}}$ explicitly engineered to induce macroscopic Solid-Body Rotation (SBR) within each plane. Under this steady-state kinematic limit, the local radial velocity vanishes ( $v_{r}=0$ ), and the tokens possess a purely azimuthal velocity $v_{\theta}=\omega r$. The fluid parcels adjust this orbital velocity to maintain a balance between the inward semantic pull (governed by the specific stiffness $S_{0}$ ) and the outward centripetal acceleration:
+
+
+\begin{equation}
+-\omega^{2} r=-S_{0} r \quad \Longrightarrow \quad \omega=\sqrt{S_{0}} .
+\end{equation}
+
+
+This linear, shear-free SBR topology naturally shields the fluid from generating semantic turbulence. It differs from gravitational systems because Newtonian gravity scales as $1 / r^{2}$, thus astrophysical disks adopt a differential, Keplerian rotational profile ( $\omega \propto r^{-3 / 2}$ ).
+
+Simultaneously, the tangential accelerations are stabilized by the algorithmic friction $\gamma$. Maintaining a stable SBR requires the exogenous specific torque injected by the network weights to scale exactly with this friction and the natural frequency. Consequently, the complex eigenvalues of the $2 \times 2$ structural blocks within $\mathbf{W}_{\mathrm{SBR}}$ take the exact constrained form $\lambda=\sqrt{S_{0}}\left(\sqrt{S_{0}} \pm i \gamma\right)$.
+
+Instead of expending degrees of freedom attempting to repel tokens radially, the deep learning optimization process utilizes its remaining parameters to dynamically translate and reorient these $d / 2$ semantic accretion disks within the high-dimensional space, clustering correlated concepts geometrically [see SM Sec. S7].
+
+\section{Contextualization via Phase Synchronization}
+
+Because the SBR topology averts a spatial singularity, the radial coordinates of the tokens are bounded, leaving the orbital phase $\theta$ as the primary kinematic degree of freedom. The tokens within a local semantic cluster effectively act as a system of coupled phase oscillators. When tokens attend to one another, the off-diagonal elements of the interaction matrix exert an azimuthal torque, acting identically to the coupling constant in the Kuramoto model of synchronization \cite{ref18,ref19}.
+
+Crucially, the susceptibility of a semantic cluster to this contextualization is strictly governed by its specific stiffness $S_{0}$. As established, $S_{0}$ defines the natural orbital frequency ( $\omega=\sqrt{S_{0}}$ ) of the invariant plane. Tokens embedded in high- $S_{0}$ planes, representing rigid or factual concepts, possess high natural frequencies that dominate the attention coupling. They resist phasesynchronization to aggressively preserve their strict, literal meanings. Conversely, tokens in low- $S_{0}$ planes, representing flexible or abstract concepts, orbit slowly. This allows the attention torque to easily overpower their intrinsic rotation, pulling them into phase-locked alignment with the surrounding context.
+
+Therefore, the abstract deep learning concept of "contextualization" is recast as a macroscopic physical observable: the Kuramoto order parameter $R$. In early layers, Brownian dispersion keeps the semantic cluster incoherent ( $R \rightarrow 0$ ). As the fluid evolves through the continuous layer depth, the attention torque overcomes this diffusion for susceptible concepts, driving correlated tokens into synchronized orbits ( $R \rightarrow 1$ ). A sharp, unified contextual representation crystallizes without sacrificing the geometric rank of the latent manifold [see SM Sec. S8].
+
+\section{Conclusion and Future Directions}
+
+In this Letter, we established a rigorous framework that recasts the algorithmic architecture of Large Language Models as a continuous dynamical system, operating as a novel class of many-body complex fluids. By formalizing the continuum limit of the Heavy Ball Transformer, we mapped the discrete latent space to a pressureless, compressible Navier--Stokes fluid. Specifically, the latent representation functions as a collisionless, driven-dissipative system: it lacks the kinetic scattering required for local thermal equilibrium, is continuously pumped by exogenous attention torques, and is drained by algorithmic friction. Furthermore, we explicitly mapped algorithmic Dropout to microscopic Brownian fluctuations, establishing that the macroscopic token density evolves according to a compressible Fokker--Planck continuity equation.
+
+Utilizing this hydrodynamic lens, we performed a Cauchy-Stokes decomposition of the macroscopic specific stiffness tensor to diagnose the geometric rank collapse of token representations. We demonstrated that standard unconstrained architectures are mathematically homologous to a self-gravitating dust cloud. The tendency for latent spaces to collapse into degenerate spatial singularities is therefore not merely an algorithmic artifact, but a fundamental hydrodynamic Jeans-like instability driven by the symmetric component of the attention mechanism.
+
+To natively arrest this collapse without relying on unphysical statistical interventions, we proposed an architectural stabilization mechanism inspired by astrophysical accretion disks. Imposing a structured, blockdiagonal operator locks the semantic fluid into an orbital steady-state of Solid-Body Rotation (SBR). In this shearfree geometry, contextualization is achieved through stable angular phase synchronization rather than degenerate spatial intersection. Consequently, the abstract algorithmic process of semantic contextualization is formally recast as a macroscopic, measurable physical observable governed by the Kuramoto order parameter.
+
+Preliminary numerical tests suggest an improvement in computational throughput and VRAM usage at the tradeoff of a slight increase in perplexity. Future research will explore the applicability of this orbital architecture across a broader range of sequence modeling tasks. This framework provides a novel, physics-based approach to understanding the underlying machinery of Large Language Models, demonstrating that fundamental principles of non-equilibrium fluid dynamics can be utilized to formally diagnose and stabilize the macroscopic behaviors of artificial neural networks.
+
+\section*{Acknowledgments}
+
+The author is grateful to Shay Zucker, Lior Rubanenko, Yoav Levine, Gal Chechik, Ofer Amrani, and Ohad Goldbart for illuminating discussions.
+
+
+\begin{thebibliography}{99}
+\bibitem{ref1} A. Vaswani et al., Attention Is All You Need, Adv. Neural Inf. Process. Syst. 30 (2017).
+\bibitem{ref2} Y. Dong, J.-B. Cordonnier, and A. Loukas, Attention is Not All You Need: Pure Attention Loses Rank Doubly Exponentially with Depth, ICML, 2793 (2021).
+\bibitem{ref3} Y. Lu et al., Understanding and Improving Transformer From a Multi-Particle Dynamic System Point of View, arXiv:1906.02762 (2019).
+\bibitem{ref4} Y. Bengio, A. Courville, and P. Vincent, Representation learning: A review and new perspectives, IEEE Trans. Pattern Anal. Mach. Intell. 35, 1798 (2013).
+\bibitem{ref5} J. Binney and S. Tremaine, Galactic Dynamics, 2nd ed. (Princeton University Press, Princeton, NJ, 2008).
+\bibitem{ref6} F. H. Shu, The Physics of Astrophysics: Volume II: Gas Dynamics (University Science Books, Mill Valley, CA, 1992).
+\bibitem{ref7} B. T. Polyak, Some methods of speeding up the convergence of iteration methods, USSR Comput. Math. Math. Phys. 4, 1 (1964).
+\bibitem{ref8} H. Xia, V. Suliafu, H. Ji, T. Nguyen, A. Bertozzi, S. Osher, and B. Wang, Heavy ball neural ordinary differential equations, Adv. Neural Inf. Process. Syst. 34, 13673 (2021).
+\bibitem{ref9} N. Srivastava et al., Dropout: A Simple Way to Prevent Neural Networks from Overfitting, J. Mach. Learn. Res. 15, 1929 (2014).
+\bibitem{ref10} Ya. B. Zel'dovich, Gravitational instability: An approximate theory for large density perturbations, Astron. Astrophys. 5, 84 (1970).
+\bibitem{ref11} R. Aris, Vectors, Tensors and the Basic Equations of Fluid Mechanics (Prentice-Hall, Englewood Cliffs, NJ, 1962).
+\bibitem{ref12} J. L. Ba, J. R. Kiros, and G. E. Hinton, Layer Normalization, arXiv:1607.06450 (2016).
+\bibitem{ref13} R. Xiong et al., On Layer Normalization in the Transformer Architecture, Proc. Mach. Learn. Res. 119, 10524 (2020).
+\bibitem{ref14} J. H. Jeans, The Stability of a Spherical Nebula, Phil. Trans. R. Soc. Lond. A 199, 1 (1902).
+\bibitem{ref15} V. S. Safronov, Evolution of the protoplanetary cloud and formation of the earth and planets (Israel Program for Scientific Translations, Jerusalem, 1972).
+\bibitem{ref16} J. E. Pringle, Accretion discs in astrophysics, Annu. Rev. Astron. Astrophys. 19, 137 (1981).
+\bibitem{ref17} R. Yellin-Bergovoy, E. Heifetz, and O. M. Umurhan, Physical mechanism of centrifugal-gravity wave resonant instability in azimuthally symmetric swirling flows, Phys. Rev. Fluids 2, 104801 (2017).
+\bibitem{ref18} Y. Kuramoto, Self-entrainment of a population of coupled non-linear oscillators, in International Symposium on Mathematical Problems in Theoretical Physics. Lecture Notes in Physics Vol. 39 (Springer, Berlin, 1975), pp. 420-422.
+\bibitem{ref19} S. H. Strogatz, From Kuramoto to Crawford: exploring the onset of synchronization in populations of coupled oscillators, Physica D 143, 1 (2000).
+\bibitem{ref20} M. E. Sander, P. Ablin, M. Blondel, and G. Peyré, Momentum Residual Neural Networks, Proc. Mach. Learn. Res. 139, 9276 (2021).
+\bibitem{ref21} A. Norcliffe, C. Bodnar, B. Day, J. Lester, and P. Liò, Second Order Neural ODEs, arXiv:2009.09457 (2020).
+\bibitem{ref22} C. W. Gardiner, Stochastic Methods: A Handbook for the Natural and Social Sciences, 4th ed. (Springer, Berlin, 2009).
+\bibitem{ref23} H. Spohn, Large Scale Dynamics of Interacting Particles (Springer-Verlag, Berlin, 1991).
+\bibitem{ref24} E. Haber and L. Ruthotto, Stable architectures for deep neural networks, Inverse Problems 34, 014004 (2017).
+\bibitem{ref25} R. T. Q. Chen, Y. Rubanova, J. Bettencourt, and D. K. Duvenaud, Neural Ordinary Differential Equations, Adv. Neural Inf. Process. Syst. 31, 6571 (2018).
+\bibitem{ref26} B. Øksendal, Stochastic Differential Equations: An Introduction with Applications, 6th ed. (Springer, Berlin, 2013).
+\bibitem{ref27} D. S. Dean, Langevin equation for the density of a system of interacting Langevin processes, J. Phys. A: Math. Gen. 29, L613 (1996).
+\bibitem{ref28} H. Risken, The Fokker-Planck Equation: Methods of Solution and Applications, 2nd ed. (Springer, Berlin, 1996).
+\bibitem{ref29} G. K. Batchelor, An Introduction to Fluid Dynamics (Cambridge University Press, Cambridge, 2000).
+\bibitem{ref30} E. M. Lifshitz and L. P. Pitaevskii, Physical Kinetics (Butterworth-Heinemann, Oxford, 1981).
+\bibitem{ref31} H. Goldstein, C. Poole, and J. Safko, Classical Mechanics, 3rd ed. (Addison Wesley, San Francisco, 2002).
+\bibitem{ref32} J. Su et al., RoFormer: Enhanced Transformer with Rotary Position Embedding, Neurocomputing 568, 127063 (2024).
+\bibitem{ref33} O. Press, N. A. Smith, and M. Lewis, Train Short, Test Long: Attention with Linear Biases Enables Input Length Extrapolation, arXiv:2108.12409 (2021).
+\bibitem{ref34} S. Chandrasekhar, Hydrodynamic and Hydromagnetic Stability (Oxford University Press, Oxford, 1961).
+
+\end{thebibliography}
+
+\end{document}

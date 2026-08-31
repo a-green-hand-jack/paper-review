@@ -19,6 +19,37 @@ TRAIL_ROOT = ROOT / "osp-trails"
 FORK_ROOT = Path(__file__).resolve().parents[2] / "open-scholar-peer"
 
 
+def load_root_env() -> list[str]:
+    """Load ROOT/.env into this process so child processes inherit it.
+
+    The OSP MCP server reads SEMANTIC_SCHOLAR_API_KEY for higher rate limits;
+    without it Semantic Scholar returns 429 or times out, which is what the
+    trails were reporting even after the server itself was correctly
+    registered.
+
+    Deliberately via the environment rather than the workspace config. Trails
+    are uploaded to a dataset repo, and anything written into a workspace file
+    goes with them -- an API key in each trail's opencode.json would be
+    published. Inherited environment leaves no copy on disk.
+
+    Returns the names (never the values) of what was loaded, for logging.
+    """
+    env_path = ROOT / ".env"
+    if not env_path.is_file():
+        return []
+    loaded: list[str] = []
+    for line in env_path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        key, value = key.strip(), value.strip().strip('"').strip("'")
+        if key and value and key not in os.environ:
+            os.environ[key] = value
+            loaded.append(key)
+    return loaded
+
+
 def timestamp() -> str:
     return datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
 
@@ -50,11 +81,20 @@ def osp_provenance() -> dict[str, str | bool | None]:
     }
 
 
+# Directories that hold figures rather than manuscripts; a PDF nested in any of
+# these is a figure, not a review task. `figs/` is used by the two writing-sample
+# papers (compression_induced_folding_of_a_sheet, transport_in_one_channel_luttinger_liquid),
+# `figures/` by older corpus entries, and `images/` by pandoc-style exports.
+FIGURE_DIRS = {"figures", "figs", "images"}
+
+
 def papers() -> list[Path]:
     return sorted(
         path
         for path in (ROOT / "papers").glob("**/*.pdf")
-        if path.is_file() and "figures" not in path.parts and not path.name.startswith("fig-")
+        if path.is_file()
+        and not any(part in FIGURE_DIRS for part in path.parts)
+        and not path.name.startswith("fig-")
     )
 
 
@@ -207,9 +247,62 @@ def upload_file(path: Path, destination: str, trail_repo: str, message: str) -> 
     return result.returncode, result.stdout + result.stderr
 
 
+PHASES = ["onboarding", "summary", "literature", "historian", "baseline_scout", "qa", "review"]
+
+
+def latest_completed_trail(name: str) -> Path | None:
+    """Newest trail for this paper that produced a review, or None."""
+    paper_dir = TRAIL_ROOT / name
+    if not paper_dir.is_dir():
+        return None
+    for trail in sorted(paper_dir.iterdir(), reverse=True):
+        if (trail / "brain" / "review" / "final_review.md").is_file():
+            return trail
+    return None
+
+
+def seed_from_prior(workspace: Path, prior: Path, from_phase: str) -> list[str]:
+    """Copy a prior run's artifacts so only `from_phase` onward needs re-running.
+
+    Iterating on the review phase costs about three minutes per paper this way,
+    against roughly thirty for a full pipeline. Everything upstream of the phase
+    under test is unchanged by definition, so re-deriving it each time buys
+    nothing and burns the retrieval rate limits that upstream phases depend on.
+
+    Returns the phase names marked completed, for the prompt.
+    """
+    cut = PHASES.index(from_phase)
+    keep = PHASES[:cut]
+    brain = workspace / ".brain"
+    prior_brain = prior / "brain"
+
+    if (prior_brain / "raw").is_dir():
+        shutil.copytree(prior_brain / "raw", brain / "raw", dirs_exist_ok=True)
+
+    session = json.loads((brain / "session.json").read_text())
+    prior_session = json.loads((prior_brain / "session.json").read_text())
+    # Carry the prior run's classification and criteria: re-deriving them would
+    # change what the phase under test is being fed, which is the one thing a
+    # controlled comparison must hold fixed.
+    for field in ("qa_criteria", "qa_pairs_per_criterion"):
+        if field in prior_session:
+            session[field] = prior_session[field]
+    session["paper"].update({
+        k: v for k, v in prior_session.get("paper", {}).items()
+        if k in ("domain_profile", "numerical_slice", "field", "review_mode", "title")
+    })
+    session["venue"] = prior_session.get("venue", session["venue"])
+    for phase in keep:
+        session["phases"][phase] = prior_session["phases"].get(phase, session["phases"][phase])
+    session["resume_from"] = from_phase
+    (brain / "session.json").write_text(json.dumps(session, indent=2) + "\n")
+    return keep
+
+
 def run_one(
     paper: Path, venue: str, llm: str, variant: str | None, harness: str,
-    trail_repo: str | None, upload: bool, execute: bool,
+    trail_repo: str | None, upload: bool, execute: bool, from_phase: str | None = None,
+    label: str | None = None,
 ) -> int:
     name = paper_name(paper)
     run_dir = TRAIL_ROOT / name / timestamp()
@@ -227,11 +320,20 @@ def run_one(
     ]
     if resolved_variant:
         command += ["--variant", resolved_variant]
-    command += [
-        "Use Open ScholarPeer to complete the full review of the paper in this workspace. "
-        f"The review venue is {venue}. Execute the numbered OSP phases in order; do not "
-        "only report the dispatcher status, and do not process any other paper.",
-    ]
+    if from_phase:
+        cmds = "".join(f"/{PHASES.index(x)}-osp-{x.replace('_', '-')} " for x in PHASES[PHASES.index(from_phase):])
+        command += [
+            f"The earlier OSP phases are already complete and their artifacts are in .brain/. "
+            f"Do NOT re-run them. Resume at the {from_phase} phase and run only: {cmds.strip()}. "
+            f"The review venue is {venue}. Read the existing .brain/raw/ artifacts as your inputs; "
+            "do not re-derive them, and do not process any other paper.",
+        ]
+    else:
+        command += [
+            "Use Open ScholarPeer to complete the full review of the paper in this workspace. "
+            f"The review venue is {venue}. Execute the numbered OSP phases in order; do not "
+            "only report the dispatcher status, and do not process any other paper.",
+        ]
     if not execute:
         print(f"DRY-RUN {name}: {' '.join(command)}")
         if upload:
@@ -257,12 +359,25 @@ def run_one(
         "upload_status": "pending" if upload else "not requested",
     }
     manifest["osp"] = osp_provenance()
+    if label:
+        manifest["label"] = label
     manifest_path = run_dir / "manifest.json"
     manifest_path.write_text(json.dumps(manifest, indent=2) + "\n")
     result = None
     try:
         with log_path.open("w") as log:
             workspace = make_workspace(run_dir, paper, venue)
+            if from_phase:
+                prior = latest_completed_trail(name)
+                if prior is None:
+                    manifest["status"] = "failed"
+                    manifest["error"] = f"--from-phase {from_phase} needs a prior completed run; none found"
+                    manifest_path.write_text(json.dumps(manifest, indent=2) + "\n")
+                    print(f"SKIP {name}: no prior trail to resume from")
+                    return 1
+                seeded = seed_from_prior(workspace, prior, from_phase)
+                manifest["seeded_from"] = str(prior.relative_to(ROOT))
+                manifest["seeded_phases"] = seeded
             result = subprocess.run(command, cwd=ROOT, stdout=log, stderr=subprocess.STDOUT, text=True)
         final_review = workspace / ".brain" / "review" / "final_review.md"
         successful_review = result is not None and result.returncode == 0 and final_review.is_file()
@@ -341,6 +456,11 @@ def run_one(
 
 
 def main() -> int:
+    loaded_env = load_root_env()
+    if loaded_env:
+        print(f"  ▸ loaded from .env: {', '.join(sorted(loaded_env))}")
+    if "SEMANTIC_SCHOLAR_API_KEY" not in os.environ:
+        print("  ⚠ no SEMANTIC_SCHOLAR_API_KEY — Semantic Scholar will hit anonymous rate limits")
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--venue", default="arxiv", help="review venue (default: arxiv)")
     parser.add_argument("--llm", default="openai/gpt-5.6-sol", help="provider/model")
@@ -352,6 +472,13 @@ def main() -> int:
     parser.add_argument("--upload", action="store_true", help="upload each trail to --trail-repo")
     parser.add_argument("--execute", action="store_true", help="actually invoke opencode")
     parser.add_argument("--workers", type=int, default=4, help="parallel papers (default: 4)")
+    parser.add_argument("--label", help="short name for this batch, recorded in every manifest. "
+                                        "Trails are otherwise identified only by timestamp, which "
+                                        "says nothing about what the run was testing.")
+    parser.add_argument("--from-phase", choices=PHASES[1:], metavar="PHASE",
+                        help="reuse the newest completed trail's artifacts and re-run only from "
+                             "this phase onward (%(choices)s). Iterating on the review phase costs "
+                             "~3 min/paper this way instead of ~30.")
     args = parser.parse_args()
     if args.upload and not args.trail_repo:
         parser.error("--upload requires --trail-repo NAMESPACE/DATASET")
@@ -375,7 +502,7 @@ def main() -> int:
         futures = {
             executor.submit(
                 run_one, path, args.venue, args.llm, args.variant, args.harness,
-                args.trail_repo, args.upload, args.execute,
+                args.trail_repo, args.upload, args.execute, args.from_phase, args.label,
             ): path
             for path in selected
         }
