@@ -63,8 +63,37 @@ def paper_name(path: Path) -> str:
     return relative.with_suffix("").as_posix().replace("/", "__").replace("_", "-").lower()
 
 
+def workspace_opencode_config() -> str:
+    """opencode project config registering the OSP MCP server.
+
+    opencode reads `opencode.json` / `opencode.jsonc`; `.mcp.json` is Claude
+    Code's format and opencode ignores it entirely. Shipping only `.mcp.json`
+    meant opencode never registered the OSP server, so every review under this
+    harness ran with no arxiv, Semantic Scholar, or Google Scholar retrieval.
+    The trails say so in their own provenance: "OSP MCP search tools not
+    exposed". Absolute paths, because the workspace has no
+    `.open-scholar-peer/` of its own.
+    """
+    python = ROOT / ".open-scholar-peer" / "mcp" / ".venv" / "bin" / "python"
+    server = ROOT / ".open-scholar-peer" / "mcp" / "osp_mcp.py"
+    config = {
+        "$schema": "https://opencode.ai/config.json",
+        "mcp": {
+            "osp": {
+                "type": "local",
+                "command": [str(python), str(server)],
+                "enabled": True,
+            }
+        },
+    }
+    return json.dumps(config, indent=2) + "\n"
+
+
 def workspace_mcp_config() -> str:
     """`.mcp.json` with relative paths resolved against ROOT.
+
+    Kept for harnesses that read this format; opencode does not, see
+    `workspace_opencode_config`.
 
     The repo's `.mcp.json` addresses the MCP server relatively, e.g.
     `.open-scholar-peer/mcp/.venv/bin/python`. Copying it verbatim into a
@@ -116,6 +145,7 @@ def make_workspace(run_dir: Path, paper: Path, venue: str) -> Path:
     shutil.copytree(ROOT / ".claude", workspace / ".claude")
     shutil.copytree(ROOT / "docs", workspace / "docs")
     (workspace / ".mcp.json").write_text(workspace_mcp_config())
+    (workspace / "opencode.json").write_text(workspace_opencode_config())
     shutil.copy2(ROOT / "AGENTS.md", workspace / "AGENTS.md")
     return workspace
 
