@@ -2,6 +2,13 @@
 
 *2026-08-30 · issues #4 #5 #6 · fork `a-green-hand-jack/open-scholar-peer@d2a4827`*
 
+> **Corpus update (2026-08-31):** 新增两个含版本对的 benchmark 论文
+> `lieb_schultz_mattis_charge_transport`（v1/v2，Zenodo 22081764 / 22140090）和
+> `chapoton_q_zeta_numerators`（v1/v2，Zenodo 22099574 / 22171042），语料现为
+> 17 篇论文 / 22 个版本任务。本文下方的 before/after 审核针对的是更新前的
+> 18-version 语料，数字保持不变；`osp_compare.py` 已改为支持任意数量版本的
+> 对比（`--versions` / `--paper-dir`，见 `OSP_BATCH.md`）。
+
 Open ScholarPeer（OSP）的默认评审标准是照着 ML/NLP/CS 会议评审表写的，但这个项目实际评审的 18 篇论文全部是数学 / 数学物理证明。这份报告记录：为什么要改、改了什么、跑了什么 benchmark、独立审核出了什么结论，以及现在还有哪些已知问题。
 
 ## 一眼看结果

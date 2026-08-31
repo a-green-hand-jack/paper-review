@@ -89,8 +89,24 @@ are uploaded.
 
 ## Version Comparison
 
-For the erdos973 sanity check, place the three PDFs under `papers/` and run a
-new comparison:
+`tools/osp_compare.py` reviews two or more versions of the same paper with
+identical settings and compares the resulting opinions. Versions can be given
+in any of three equivalent forms:
+
+- `--v1/--v2/--v3` — the classic three-version form (used by the erdos973
+  sanity check);
+- `--versions PDF [PDF ...]` — an arbitrary two-or-more-version list, in
+  order;
+- `--paper-dir DIR` — a corpus directory whose `v*.pdf` files are the
+  versions, discovered in sorted order (e.g. `v1.pdf v2.pdf`).
+
+The comparison name defaults to the versions' parent directory
+(`--name` overrides it) and the report is written under
+`osp-trails/<name>-comparison/<timestamp>/`. `--expected-order v1,v3` can
+restate the expected quality progression when it differs from the file order;
+the Structured Ordering Check evaluates the recommendations along that order.
+
+Three-version sanity check (erdos973):
 
 ```bash
 python3 tools/osp_compare.py \
@@ -104,17 +120,31 @@ python3 tools/osp_compare.py \
   --trail-repo Jack-Jieke-Wu/osp-trails
 ```
 
+Two-version comparison of a corpus directory, e.g. the LSM charge transport
+paper:
+
+```bash
+python3 tools/osp_compare.py \
+  --paper-dir papers/lieb_schultz_mattis_charge_transport \
+  --expected-order v1,v2 \
+  --venue arxiv \
+  --llm openai/gpt-5.6-sol \
+  --variant medium \
+  --harness opencode \
+  --trail-repo Jack-Jieke-Wu/osp-trails
+```
+
 To reuse existing local completed trails instead, add `--reuse`. Reuse does
-not download from Hugging Face and requires all three local PDFs plus a
+not download from Hugging Face and requires the local PDFs plus a
 successful local trail containing `brain/review/final_review.md` for each
 version. The command writes a new comparison report only after those local
 prerequisites are present. Without `--reuse`, supplying `--trail-repo` uploads
-the three version trails and the generated comparison report.
+the version trails and the generated comparison report.
 
-The comparison command reviews all three versions in parallel with identical
+The comparison command reviews all versions in parallel with identical
 settings, then writes `comparison.md` and one copy of each final review under
-`osp-trails/erdos973-comparison/<timestamp>/`. The report records the expected
-ordering `v1 < v2 < v3`, extracts recommendation and confidence signals, and
-includes v1-to-v2 and v2-to-v3 diffs. The structured ordering check is
-diagnostic only: equal reviewer outcomes are reported as tied rather than
-being converted into a fabricated quality ranking.
+`osp-trails/<name>-comparison/<timestamp>/`. The report records the expected
+ordering (`v1 < v2 < ...`), extracts recommendation and confidence signals,
+and includes diffs between each pair of consecutive versions. The structured
+ordering check is diagnostic only: equal reviewer outcomes are reported as
+tied rather than being converted into a fabricated quality ranking.

@@ -84,15 +84,23 @@ configuration is intentionally not committed to this repository.
 
 ## Benchmark Verification
 
-Preview the current 15-paper corpus without making model calls:
+Preview the current corpus (17 papers, 22 version runs) without making model
+calls:
 
 ```bash
 cd /Users/jieke/orca/projects/paper-review
 python3 tools/osp_batch.py --venue arxiv --all
 ```
 
-When the three version PDFs and completed local trails are available, run the
-version comparison against existing trails without rerunning reviews:
+The corpus is: the 15 named papers, `erdos973` v1/v2/v3,
+`lieb_schultz_mattis_charge_transport` v1/v2, and
+`chapoton_q_zeta_numerators` v1/v2. Every PDF under `papers/` that is not
+inside `figures/` and does not begin with `fig-` is one task; each version
+pair lives in a directory of `v*.pdf` files for version comparison.
+
+When the version PDFs and completed local trails are available, run the
+version comparison against existing trails without rerunning reviews. The
+classic three-version form:
 
 ```bash
 cd /Users/jieke/orca/projects/paper-review
@@ -108,11 +116,27 @@ python3 tools/osp_compare.py \
   --reuse
 ```
 
-`--reuse` is local-only. It requires `papers/erdos973/v1.pdf`, `v2.pdf`, and
-`v3.pdf`, plus a successful local trail for each version containing
-`brain/review/final_review.md`. The `--trail-repo` option does not download
-remote trails. Without those prerequisites, omit `--reuse` and run the
-comparison normally, or use the archived Hugging Face report as the baseline.
+The generic two-or-more-version form, which auto-discovers `v*.pdf` under a
+corpus directory:
+
+```bash
+cd /Users/jieke/orca/projects/paper-review
+python3 tools/osp_compare.py \
+  --paper-dir papers/lieb_schultz_mattis_charge_transport \
+  --expected-order v1,v2 \
+  --venue arxiv \
+  --llm openai/gpt-5.6-sol \
+  --variant medium \
+  --harness opencode \
+  --trail-repo Jack-Jieke-Wu/osp-trails \
+  --reuse
+```
+
+`--reuse` is local-only. It requires the version PDFs plus a successful local
+trail for each version containing `brain/review/final_review.md`. The
+`--trail-repo` option does not download remote trails. Without those
+prerequisites, omit `--reuse` and run the comparison normally, or use the
+archived Hugging Face report as the baseline.
 
 Every executed run receives a new timestamped trail. The manifest records the
 paper hash, model configuration, command, timestamps, status, and trail
@@ -140,7 +164,7 @@ The following checks passed for all 14 generated tool adapters:
 - `python3 scripts/sync_adapters.py --check`
 - `bash scripts/test_install.sh`
 
-The 15-paper batch command also passed in dry-run mode, discovering 15
-manuscript PDFs and excluding figure PDFs. These are source/parity,
-installer-structure, and dry-run checks; they do not claim a new end-to-end
-model run or a new version-comparison run.
+The batch command also passed in dry-run mode, discovering 22 manuscript PDFs
+(17 papers including version sets) and excluding figure PDFs. These are
+source/parity, installer-structure, and dry-run checks; they do not claim a
+new end-to-end model run or a new version-comparison run.

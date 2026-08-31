@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Review three paper versions with identical settings and compare the opinions."""
+"""Review two or more paper versions with identical settings and compare the opinions."""
 from __future__ import annotations
 
 import argparse
@@ -13,6 +13,8 @@ import subprocess
 import sys
 
 from osp_batch import ROOT, TRAIL_ROOT, osp_provenance, paper_name, resolve_model, sha256
+
+VERSION_FILE_RE = re.compile(r"^v\d+[^/]*\.pdf$", re.IGNORECASE)
 
 
 def latest_trail(paper: Path) -> Path:
@@ -122,8 +124,8 @@ def review_signals(text: str) -> tuple[str, int | None]:
     return recommendation, confidence
 
 
-def ordering_status(signals: list[tuple[str, int | None]]) -> str:
-    recommendation_ranks = {
+def recommendation_rank(recommendation: str) -> int:
+    return {
         "reject": 0,
         "weak reject": 1,
         "major revision": 2,
@@ -131,22 +133,71 @@ def ordering_status(signals: list[tuple[str, int | None]]) -> str:
         "minor revision": 4,
         "weak accept": 5,
         "accept": 6,
-    }
-    ranks = [recommendation_ranks.get(recommendation, -1) for recommendation, _ in signals]
+    }.get(recommendation, -1)
+
+
+def ordering_status(
+    signals: dict[str, tuple[str, int | None]], expected_order: list[str]
+) -> str:
+    """Summarize whether recommendation ranks increase along the expected order."""
+    ranks = [recommendation_rank(signals[label][0]) for label in expected_order]
     if -1 in ranks:
         return "inconclusive (missing recommendation)"
-    if ranks[0] < ranks[1] < ranks[2]:
+    if all(ranks[i] < ranks[i + 1] for i in range(len(ranks) - 1)):
         return "strictly increasing (recommendation-only)"
-    if ranks[0] > ranks[1] or ranks[1] > ranks[2]:
+    if any(ranks[i] > ranks[i + 1] for i in range(len(ranks) - 1)):
         return "not increasing"
     return "inconclusive (tied reviewer outcomes)"
 
 
+def discover_versions(paper_dir: Path) -> list[tuple[str, Path]]:
+    """Return [(label, path), ...] for v*.pdf files under a corpus directory."""
+    candidates = sorted(
+        path for path in paper_dir.glob("*.pdf")
+        if VERSION_FILE_RE.match(path.name) and path.is_file()
+    )
+    return [(path.stem, path) for path in candidates]
+
+
+def parse_versions(args: argparse.Namespace) -> list[tuple[str, Path]]:
+    """Resolve the version list from whichever CLI form the caller used."""
+    if args.versions and any((args.v1, args.v2, args.v3)):
+        raise ValueError("--versions cannot be combined with --v1/--v2/--v3")
+    if args.paper_dir and (args.versions or any((args.v1, args.v2, args.v3))):
+        raise ValueError("--paper-dir cannot be combined with --versions or --v1/--v2/--v3")
+    if args.versions:
+        if len(args.versions) < 2:
+            raise ValueError("--versions needs at least 2 PDFs")
+        versions = [(Path(value).stem, ROOT / Path(value)) for value in args.versions]
+    elif args.paper_dir:
+        versions = discover_versions(ROOT / Path(args.paper_dir))
+        if len(versions) < 2:
+            raise ValueError(f"no version PDFs (v*.pdf) found under {args.paper_dir}")
+    elif args.v1 and args.v2 and args.v3:
+        versions = [("v1", ROOT / args.v1), ("v2", ROOT / args.v2), ("v3", ROOT / args.v3)]
+    else:
+        raise ValueError(
+            "specify versions with --versions PDF [PDF ...], --paper-dir DIR, "
+            "or the classic --v1/--v2/--v3"
+        )
+    labels = [label for label, _ in versions]
+    if len(set(labels)) != len(labels):
+        raise ValueError(f"duplicate version labels: {labels}")
+    missing = [str(path) for _, path in versions if not path.is_file()]
+    if missing:
+        raise ValueError("missing version PDF(s): " + ", ".join(missing))
+    return versions
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--v1", required=True, type=Path)
-    parser.add_argument("--v2", required=True, type=Path)
-    parser.add_argument("--v3", required=True, type=Path)
+    parser.add_argument("--v1", type=Path, help="first version PDF (classic three-version form)")
+    parser.add_argument("--v2", type=Path, help="second version PDF (classic three-version form)")
+    parser.add_argument("--v3", type=Path, help="third version PDF (classic three-version form)")
+    parser.add_argument("--versions", nargs="+", help="two or more version PDFs, in order")
+    parser.add_argument("--paper-dir", help="corpus directory whose v*.pdf files are the versions")
+    parser.add_argument("--name", help="comparison name, e.g. erdos973 (default: versions' parent dir)")
+    parser.add_argument("--expected-order", help="comma-separated labels in expected quality order, e.g. v1,v2,v3")
     parser.add_argument("--venue", default="arxiv")
     parser.add_argument("--llm", default="openai/gpt-5.6-sol")
     parser.add_argument("--variant", default="medium")
@@ -154,10 +205,23 @@ def main() -> int:
     parser.add_argument("--trail-repo")
     parser.add_argument("--reuse", action="store_true", help="compare the latest existing trails without rerunning reviews")
     args = parser.parse_args()
-    versions = [("v1", ROOT / args.v1), ("v2", ROOT / args.v2), ("v3", ROOT / args.v3)]
-    missing = [str(path) for _, path in versions if not path.is_file()]
-    if missing:
-        parser.error("missing version PDF(s): " + ", ".join(missing))
+
+    try:
+        versions = parse_versions(args)
+    except ValueError as error:
+        parser.error(str(error))
+
+    labels = [label for label, _ in versions]
+    expected_order = labels
+    if args.expected_order:
+        expected_order = [label.strip() for label in args.expected_order.split(",") if label.strip()]
+        unknown = [label for label in expected_order if label not in labels]
+        if unknown:
+            parser.error(f"--expected-order references unknown labels: {', '.join(unknown)}")
+        if len(set(expected_order)) != len(expected_order):
+            parser.error("--expected-order must not repeat labels")
+    else:
+        expected_order = labels
 
     trails: dict[str, Path] = {}
     failures = []
@@ -170,7 +234,7 @@ def main() -> int:
             except (FileNotFoundError, ValueError, TypeError, AttributeError, json.JSONDecodeError) as error:
                 failures.append(f"{label}: {error}")
     else:
-        with ThreadPoolExecutor(max_workers=3) as executor:
+        with ThreadPoolExecutor(max_workers=len(versions)) as executor:
             futures = {executor.submit(review_version, path, args): label for label, path in versions}
             for future in as_completed(futures):
                 label = futures[future]
@@ -183,14 +247,15 @@ def main() -> int:
         print("\n".join(failures), file=sys.stderr)
         return 1
 
-    comparison = TRAIL_ROOT / "erdos973-comparison" / datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    name = args.name or versions[0][1].parent.name
+    comparison = TRAIL_ROOT / f"{name}-comparison" / datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     comparison.mkdir(parents=True)
     reviews = {label: (trail / "brain" / "review" / "final_review.md").read_text() for label, trail in trails.items()}
-    signals = {label: review_signals(reviews[label]) for label in ("v1", "v2", "v3")}
+    signals = {label: review_signals(reviews[label]) for label in labels}
     for label, text in reviews.items():
         (comparison / f"{label}_review.md").write_text(text)
     report = [
-        "# erdos973 Version Comparison",
+        f"# {name} Version Comparison",
         "",
         "This report compares reviews generated with identical settings.",
         "",
@@ -202,7 +267,7 @@ def main() -> int:
         "",
         "## Expected Ordering",
         "",
-        "The expected quality progression is `v1 < v2 < v3`.",
+        "The expected quality progression is `" + " < ".join(expected_order) + "`.",
         "Inspect the decision, confidence, strengths, weaknesses, and questions below.",
         "",
         "## Structured Ordering Check",
@@ -213,25 +278,29 @@ def main() -> int:
         "| Version | Recommendation | Confidence |",
         "| --- | --- | --- |",
     ]
-    for label in ("v1", "v2", "v3"):
+    for label in labels:
         recommendation, confidence = signals[label]
         report.append(f"| {label} | {recommendation} | {confidence}/5 |" if confidence is not None else f"| {label} | {recommendation} | unknown |")
     report += ["", "## Source Trails", ""]
-    report += [f"- {label}: `{trails[label].relative_to(ROOT)}`" for label in ("v1", "v2", "v3")]
-    report += ["", f"Ordering status: **{ordering_status([signals[label] for label in ('v1', 'v2', 'v3')])}**."]
-    for label in ("v1", "v2", "v3"):
+    report += [f"- {label}: `{trails[label].relative_to(ROOT)}`" for label in labels]
+    report += ["", f"Ordering status: **{ordering_status(signals, expected_order)}**."]
+    for label in labels:
         report += ["", f"## {label}", "", reviews[label]]
-    report += ["", "## v1 to v2 Diff", "", "```diff"]
-    report += list(difflib.unified_diff(reviews["v1"].splitlines(), reviews["v2"].splitlines(), fromfile="v1", tofile="v2"))
-    report += ["```", "", "## v2 to v3 Diff", "", "```diff"]
-    report += list(difflib.unified_diff(reviews["v2"].splitlines(), reviews["v3"].splitlines(), fromfile="v2", tofile="v3"))
-    report += ["```", ""]
+    for first, second in zip(labels, labels[1:]):
+        report += ["", f"## {first} to {second} Diff", "", "```diff"]
+        report += list(
+            difflib.unified_diff(
+                reviews[first].splitlines(), reviews[second].splitlines(),
+                fromfile=first, tofile=second,
+            )
+        )
+        report += ["```", ""]
     (comparison / "comparison.md").write_text("\n".join(report))
     if args.trail_repo and not args.reuse:
         upload = subprocess.run(
             [
                 "hf", "upload", args.trail_repo, str(comparison),
-                f"osp-trails/erdos973-comparison/{comparison.name}",
+                f"osp-trails/{name}-comparison/{comparison.name}",
                 "--type", "dataset", "--private",
                 "--commit-message", f"Add OSP comparison {comparison.name}",
             ],
