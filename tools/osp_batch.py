@@ -19,6 +19,37 @@ TRAIL_ROOT = ROOT / "osp-trails"
 FORK_ROOT = Path(__file__).resolve().parents[2] / "open-scholar-peer"
 
 
+def load_root_env() -> list[str]:
+    """Load ROOT/.env into this process so child processes inherit it.
+
+    The OSP MCP server reads SEMANTIC_SCHOLAR_API_KEY for higher rate limits;
+    without it Semantic Scholar returns 429 or times out, which is what the
+    trails were reporting even after the server itself was correctly
+    registered.
+
+    Deliberately via the environment rather than the workspace config. Trails
+    are uploaded to a dataset repo, and anything written into a workspace file
+    goes with them -- an API key in each trail's opencode.json would be
+    published. Inherited environment leaves no copy on disk.
+
+    Returns the names (never the values) of what was loaded, for logging.
+    """
+    env_path = ROOT / ".env"
+    if not env_path.is_file():
+        return []
+    loaded: list[str] = []
+    for line in env_path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        key, value = key.strip(), value.strip().strip('"').strip("'")
+        if key and value and key not in os.environ:
+            os.environ[key] = value
+            loaded.append(key)
+    return loaded
+
+
 def timestamp() -> str:
     return datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
 
@@ -341,6 +372,11 @@ def run_one(
 
 
 def main() -> int:
+    loaded_env = load_root_env()
+    if loaded_env:
+        print(f"  ▸ loaded from .env: {', '.join(sorted(loaded_env))}")
+    if "SEMANTIC_SCHOLAR_API_KEY" not in os.environ:
+        print("  ⚠ no SEMANTIC_SCHOLAR_API_KEY — Semantic Scholar will hit anonymous rate limits")
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--venue", default="arxiv", help="review venue (default: arxiv)")
     parser.add_argument("--llm", default="openai/gpt-5.6-sol", help="provider/model")
