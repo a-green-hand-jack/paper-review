@@ -1,0 +1,53 @@
+# harbor-canary GUID {{ canary }}
+FROM ubuntu:24.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Network is available during build and not at run time, so anything the agent
+# will need has to arrive here.
+#
+# poppler-utils earns its place: reviewing a PDF means rasterising pages to look
+# at figures, and the previous harness lost six runs in ten to a missing scratch
+# path for exactly that (see tools/osp_batch.py). A recommended-plus-science TeX
+# set compiles every manuscript in this corpus without pulling texlive-full.
+#
+# curl, ripgrep, nodejs and npm are here for the agent rather than the paper.
+# Harbor installs agents at run time, and every adapter's install step begins by
+# apt-getting its own basics; pre-installing them turns that into a no-op.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        ca-certificates \
+        curl \
+        git \
+        latexmk \
+        nodejs \
+        npm \
+        poppler-utils \
+        procps \
+        python3 \
+        python3-pip \
+        ripgrep \
+        texlive-fonts-recommended \
+        texlive-latex-extra \
+        texlive-latex-recommended \
+        texlive-science
+
+# The apt package lists are kept deliberately, against the usual habit of
+# deleting them. An agent adapter that runs `apt-get install -y curl ripgrep`
+# with no network still succeeds when the lists are present and the packages are
+# installed -- apt reports them as already current. Delete the lists and the
+# same command dies with "Unable to locate package curl", which is what took out
+# the first real agent run here.
+
+WORKDIR /workspace
+
+# Public manuscript material only. The writing-time trail (review/, plan.md) and
+# any later version of this paper are not in this image.
+COPY paper/ /workspace/paper/
+
+# Scratch space PDF tooling reaches for by default, pre-created so nothing has
+# to ask permission for it mid-run.
+RUN mkdir -p /workspace/submission /logs/agent /tmp/opencode \
+    && chmod -R a+rwX /workspace/submission /logs/agent /tmp/opencode
+
+CMD ["/bin/bash"]

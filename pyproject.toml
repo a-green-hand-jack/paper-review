@@ -1,0 +1,46 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "paper-review-harbor"
+version = "0.1.0"
+description = "Turn papers into standard Harbor tasks for evaluating paper review agents"
+readme = "docs/PAPER2HARBOR.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+
+dependencies = [
+  "jinja2>=3.1",
+  "pydantic>=2.7",
+  "pyyaml>=6.0",
+  "typer>=0.12",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0",
+  "ruff>=0.9",
+]
+publish = [
+  "huggingface-hub>=0.25",
+]
+
+[project.scripts]
+pre-harbor = "paper_review_harbor.cli:app"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/paper_review_harbor"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+# tools/ is the retiring OSP baseline harness (see docs/OSP_BATCH.md); it is
+# not held to this project's lint rules while it waits to be deleted.
+exclude = ["tools"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]

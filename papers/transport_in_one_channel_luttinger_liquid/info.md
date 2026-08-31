@@ -15,8 +15,9 @@
 
 ## 文件
 
-- `paper.tex`：LaTeX 源码
-- `figs/fig1.jpg`：图
+- `paper/main.tex`：LaTeX 源码（2026-08-31 从根目录 `paper.tex` 归一化为 `paper/` 布局；原 pandoc 导出引用 `./images/` 的图路径已改为 `figs/`）
+- `paper/figs/fig1.jpg`：图
+- `paper/main.pdf`：Ubuntu TeXLive 2026 xelatex 编译产物（7 页，2026-08-31）
 
 ## 备注
 

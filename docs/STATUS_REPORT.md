@@ -6,7 +6,8 @@
 > `lieb_schultz_mattis_charge_transport`（v1/v2，Zenodo 22081764 / 22140090）和
 > `chapoton_q_zeta_numerators`（v1/v2，Zenodo 22099574 / 22171042）；同时移除
 > 唯一一份无 tex 源码的 `hidden_arrow_order_escape`（纯 PDF 草稿）。语料现为
-> 17 篇论文 / 21 个版本任务（含 erdos973 v1/v2/v3，各版本已补 arXiv 源）。
+> 23 篇论文 / 27 个版本任务（含 erdos973 v1/v2/v3，各版本已补 arXiv 源；
+> 2026-08-31 群收集新增的 6 篇已补齐 PDF/tex，全部可评审）。
 > 本文下方的 before/after 审核针对的是更新前的 18-version 语料，数字保持
 > 不变；`osp_compare.py` 已改为支持任意数量版本的对比（`--versions` /
 > `--paper-dir`，见 `OSP_BATCH.md`）。

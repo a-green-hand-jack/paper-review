@@ -84,7 +84,7 @@ configuration is intentionally not committed to this repository.
 
 ## Benchmark Verification
 
-Preview the current corpus (17 papers, 21 version runs) without making model
+Preview the current corpus (23 papers, 27 version runs) without making model
 calls:
 
 ```bash
@@ -92,16 +92,26 @@ cd /Users/jieke/orca/projects/paper-review
 python3 tools/osp_batch.py --venue arxiv --all
 ```
 
-The corpus is: the 14 named papers, `erdos973` v1/v2/v3,
+The corpus is: the 9 named single-paper entries (including the 6 group-chat
+papers collected on 2026-08-31 —
+`trapping_centers_superfluid_mott_insulator`,
+`hydrodynamics_of_large_language_models`, `de_novo_nanobody_discovery`,
+`superconductivity_uniform_electron_gas`,
+`compression_induced_folding_of_a_sheet`,
+`transport_in_one_channel_luttinger_liquid`), the 11 `solution-p*` papers,
+and the version sets `erdos973` v1/v2/v3,
 `lieb_schultz_mattis_charge_transport` v1/v2, and
 `chapoton_q_zeta_numerators` v1/v2. Every PDF under `papers/` that is not
-inside `figures/` and does not begin with `fig-` is one task; each version
-pair lives in a directory of `v*.pdf` files for version comparison. Every
-task must ship its LaTeX source alongside the PDF; `hidden_arrow_order_escape`
-was removed on 2026-08-31 because it was the only PDF-only entry.
+inside a figure directory (`figures/`, `figs/`, or `images/`) and does not
+begin with `fig-` is one task; each version pair lives in a directory of
+`v*.pdf` files for version comparison. Every task must ship its LaTeX source
+alongside the PDF; `hidden_arrow_order_escape` was removed on 2026-08-31
+because it was the only PDF-only entry at the time, and
+`de_novo_nanobody_discovery` later gained a faithful reconstructed
+`paper.tex` (figures extracted from the PDF) so no task remains PDF-only.
 
 The whole corpus is mirrored in the public Hugging Face dataset
-`Jack-Jieke-Wu/osp-benchmark` (same `papers/` layout, 17 papers / 21 version
+`Jack-Jieke-Wu/osp-benchmark` (same `papers/` layout, 23 papers / 27 version
 runs). Review trails are archived separately in the private
 `Jack-Jieke-Wu/osp-trails`.
 
@@ -171,7 +181,7 @@ The following checks passed for all 14 generated tool adapters:
 - `python3 scripts/sync_adapters.py --check`
 - `bash scripts/test_install.sh`
 
-The batch command also passed in dry-run mode, discovering 21 manuscript PDFs
-(17 papers including version sets) and excluding figure PDFs. These are
+The batch command also passed in dry-run mode, discovering 27 manuscript PDFs
+(23 papers including version sets) and excluding figure PDFs. These are
 source/parity, installer-structure, and dry-run checks; they do not claim a
 new end-to-end model run or a new version-comparison run.

@@ -17,7 +17,9 @@
 
 ## 文件
 
-- `VHHreport.pdf`：VHH 报告 PDF（含 graphical abstract、图 1-6 等）
+- `paper/VHHreport.pdf`：VHH 报告 PDF（含 graphical abstract、图 1-6 等）
+- `paper/main.tex`：LaTeX 重建源码（2026-08-31 由 agent 从 PDF 逐字重建，16 条参考文献、9 张表、图以 PNG 提取自 PDF）
+- `paper/fig_abstract.png`、`paper/fig1.png` … `paper/fig8.png`：从 PDF 提取的图
 
 ## 备注
 
