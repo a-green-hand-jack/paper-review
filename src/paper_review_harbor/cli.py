@@ -331,6 +331,10 @@ def verify(
     network: Annotated[str, typer.Option(help="none | agent | scholarly")] = "none",
     model: Annotated[str, typer.Option(help="required by most real agents")] = "",
     api_host: Annotated[str, typer.Option(help="the agent's own provider host")] = "",
+    agent_env: Annotated[
+        list[str] | None,
+        typer.Option(help="env var name to pass to the agent, e.g. OPENAI_API_KEY"),
+    ] = None,
 ) -> None:
     """Run a task under Harbor, or print the command for a machine that can."""
     task_dir = tasks / DATASET_NAME / label
@@ -355,7 +359,12 @@ def verify(
     command = ["harbor", "run", "-p", str(task_dir), "-a", agent]
     if model:
         command += ["-m", model]
-    command += ["-y", *_host_args(hosts)]
+    command += ["-y"]
+    # Names, expanded by the shell that runs the command, so a printed command
+    # is copy-pasteable without a key ever passing through here.
+    for name in agent_env or []:
+        command += ["--agent-env", f'"{name}=${name}"']
+    command += _host_args(hosts)
     printable = " ".join(command)
 
     if not shutil.which("harbor") or not shutil.which("docker"):

@@ -153,6 +153,31 @@ def _materialise(version: PaperVersion, destination: Path) -> None:
         raise IngestError(f"unknown source kind {version.source_kind!r}")
 
 
+#: What a sibling PDF is renamed to when staged. Faithful names would leak:
+#: staging `v1.pdf` tells the agent its manuscript is one of several versions,
+#: which is a hint about where to look for the answer.
+STAGED_PDF_NAME = "paper.pdf"
+
+
+def stage_sibling_pdf(root: Path, version: PaperVersion) -> str | None:
+    """Copy in the corpus PDF when the source bundle carries none.
+
+    arXiv e-print bundles hold source only; the compiled PDF sits beside the
+    tarball in the corpus, so eleven of the papers here would otherwise reach
+    the agent as LaTeX with no rendered form at all. A reviewer reads the PDF,
+    and `poppler-utils` is in the image precisely so figures can be rasterised
+    and looked at -- neither of which works if compiling from source is the
+    only way to get one.
+    """
+    if version.pdf is None or not version.pdf.is_file():
+        return None
+    if any(root.glob("*.pdf")):
+        return None
+    destination = root / STAGED_PDF_NAME
+    shutil.copy2(version.pdf, destination)
+    return destination.name
+
+
 def _strip_private(root: Path, version: PaperVersion) -> list[str]:
     """Delete the writing-time trail from the staged tree. Returns what went."""
     removed: list[str] = []
@@ -442,6 +467,7 @@ def ingest(version: PaperVersion, build_root: Path) -> IngestResult:
     _flatten_single_dir(root)
     excluded = _strip_private(root, version)
     sanitised = strip_bib_preamble(root)
+    stage_sibling_pdf(root, version)
 
     main = find_main_tex(root)
     paper_map = build_map(root, version.label, main)

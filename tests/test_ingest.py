@@ -7,6 +7,7 @@ import pytest
 
 from paper_review_harbor.corpus import discover, discover_paper
 from paper_review_harbor.ingest import (
+    STAGED_PDF_NAME,
     IngestError,
     find_main_tex,
     ingest,
@@ -114,3 +115,34 @@ class TestRealCorpus:
             if result.paper_map.undefined_citations:
                 offenders[version.label] = result.paper_map.undefined_citations
         assert offenders == {}
+
+
+class TestStagedPdf:
+    """A reviewer reads the PDF; eleven tasks used to ship none."""
+
+    def test_sibling_pdf_is_staged_when_the_bundle_has_none(
+        self, corpus: Path, tmp_path: Path
+    ) -> None:
+        v1, _, _ = discover_paper(corpus / "multi_version")
+        result = ingest(v1, tmp_path / "build")
+        assert (result.root / STAGED_PDF_NAME).is_file()
+
+    def test_staged_name_does_not_leak_the_version(self, corpus: Path, tmp_path: Path) -> None:
+        """`v1.pdf` in the environment would tell the agent to look for a v2."""
+        v1, _, _ = discover_paper(corpus / "multi_version")
+        result = ingest(v1, tmp_path / "build")
+        assert [p.name for p in result.root.glob("*.pdf")] == [STAGED_PDF_NAME]
+
+    def test_a_bundled_pdf_is_left_alone(self, corpus: Path, tmp_path: Path) -> None:
+        """The manuscript layout already carries main.pdf beside its source."""
+        (version,) = discover_paper(corpus / "solution-p0001")
+        result = ingest(version, tmp_path / "build")
+        names = {p.name for p in result.root.glob("*.pdf")}
+        assert names == {"main.pdf"}, "an existing PDF must not be duplicated"
+
+    def test_every_real_task_ships_a_rendered_paper(
+        self, real_papers: Path, tmp_path: Path
+    ) -> None:
+        for version in discover(real_papers):
+            result = ingest(version, tmp_path / "build")
+            assert list(result.root.glob("*.pdf")), version.label
