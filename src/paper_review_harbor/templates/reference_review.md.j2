@@ -1,0 +1,33 @@
+# Review of *{{ paper_slug }}*{% if paper_version %} ({{ paper_version }}){% endif %}
+
+*Reference review. Generated from the annotated rubric, stating each finding in
+the rubric's own description of the manuscript and the defect — deliberately
+**not** in the words of that finding's `accept_if`. If the oracle scores 1.0,
+each `accept_if` is satisfiable by prose that reports the defect rather than by
+prose that recites the criterion. A finding the oracle misses is a finding whose
+`accept_if` is too narrow, and that is worth knowing before any agent is run
+against it.*
+
+## Summary
+
+The manuscript has {{ findings | length }} defects that a competent review of it
+should report, {{ gating | length }} of which are treated as gating for the
+{{ protocol }} protocol.
+
+## Findings
+
+{% for finding in findings %}
+### {{ loop.index }}. {{ finding.title }}
+
+- **Location:** {{ finding.location }}
+- **Severity:** {{ finding.severity }}{% if finding.gating %} (gating){% endif %}
+
+The manuscript {{ finding.claim }}
+
+{{ finding.defect }}
+
+{% endfor %}
+## What was not checked
+
+This reference review is derived from the rubric rather than from an independent
+reading, so it makes no claim about anything the rubric does not record.

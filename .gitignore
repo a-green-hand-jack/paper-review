@@ -9,9 +9,21 @@
 
 # Local agent configuration and runtime state
 .claude/
-.opencode/
 .mcp.json
 AGENTS.md
+
+# .opencode/ is where the Open ScholarPeer installer drops generated artifacts
+# (see docs/OSP_FORK_WORKFLOW.md), so it stays ignored by default. The
+# paper2task workflow is different: it is source, maintained here, and has to
+# sit in .opencode/ because that is the only place opencode looks.
+.opencode/*
+!.opencode/command/
+!.opencode/agent/
+
+# Build products and generated Harbor tasks. Tasks are published to the
+# Hugging Face dataset, not committed here.
+/build/
+/tasks/
 
 # oh-my-claudecode runtime/operational state (session state, plans, logs) —
 # .omc/skills/** would be the intentional committable exception if it existed
@@ -21,3 +33,10 @@ AGENTS.md
 # Local private review trails and Python bytecode
 /osp-trails/
 __pycache__/
+
+# Python environment and tooling caches. uv writes a self-ignoring .gitignore
+# inside .venv/, but naming it here does not depend on that.
+/.venv/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/

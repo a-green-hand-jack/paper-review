@@ -1,0 +1,58 @@
+<!-- harbor-canary GUID {{ canary }} -->
+
+# Review this manuscript
+
+A complete manuscript is at `/workspace/paper/`. Its toplevel TeX file is
+`{{ main_tex }}`{% if pdf %}, and the compiled PDF is `{{ pdf }}`{% endif %}.
+It is a {{ domain }} paper submitted to {{ venue }}.
+
+Read it and write a peer review.
+
+## What to produce
+
+Write your review to **`/workspace/submission/review.md`**. That is the only
+required output. Anything else you find useful — structured findings, per-section
+notes, a scratch summary — is yours to decide, and will be archived alongside it
+without affecting your assessment.
+
+## What a review is expected to do here
+
+Your review is assessed on whether it identifies the manuscript's genuine
+defects: places where the paper claims more than it establishes, where an
+argument has a gap, where a statement is not supported by what precedes it,
+where attribution is wrong or missing, or where the presentation misleads a
+reader about what was actually done.
+
+Be specific. A finding that names a location and says what is wrong with it is
+worth more than a general impression. Quote or point to the passage you mean.
+
+Reporting problems that are not there is not free: a review that lists every
+possible objection in the hope of covering the real ones scores worse than one
+that reports what it can actually support.
+
+If you are uncertain whether something is a defect, say so and say why, rather
+than either suppressing it or asserting it.
+
+## Ground rules
+
+- `/workspace/paper/` is read-only input. Do not modify it.
+- Judge the manuscript as submitted. Do not rewrite it.
+{% if protocol == "offline" %}
+- **You have no network access.** Assess the manuscript on its own terms, from
+  what is on the page. Where a claim would need checking against outside
+  literature you cannot reach, say that it needs checking rather than guessing
+  at the answer.
+{%- else %}
+- **You have network access** to scholarly sources ({{ allowed_hosts | join(", ") }}).
+  Checking the manuscript's claims and attributions against the literature is
+  part of this task.
+{%- endif %}
+- Do not fabricate citations, quotations, or results.
+
+## Working space
+
+- `/workspace/submission/` — your review goes here.
+- `/logs/agent/` — scratch space for your own run logs, archived with the trial.
+- LaTeX (`pdflatex`, `latexmk`) and `poppler-utils` (`pdftotext`, `pdftoppm`) are
+  installed if you want to compile the source or rasterise pages to inspect
+  figures.

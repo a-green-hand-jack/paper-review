@@ -1,0 +1,36 @@
+# harbor-canary GUID {{ canary }}
+FROM ubuntu:24.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# poppler-utils earns its place: reviewing a PDF means rasterising pages to look
+# at figures, and the previous harness lost six runs in ten to a missing scratch
+# path for exactly that (see tools/osp_batch.py). A recommended-plus-science TeX
+# set compiles every manuscript in this corpus without pulling texlive-full.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        ca-certificates \
+        git \
+        latexmk \
+        poppler-utils \
+        procps \
+        python3 \
+        python3-pip \
+        texlive-fonts-recommended \
+        texlive-latex-extra \
+        texlive-latex-recommended \
+        texlive-science \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /workspace
+
+# Public manuscript material only. The writing-time trail (review/, plan.md),
+# any later version of this paper, and the rubric are not in this image.
+COPY paper/ /workspace/paper/
+
+# Scratch space PDF tooling reaches for by default, pre-created so nothing has
+# to ask permission for it mid-run.
+RUN mkdir -p /workspace/submission /logs/agent /tmp/opencode \
+    && chmod -R a+rwX /workspace/submission /logs/agent /tmp/opencode
+
+CMD ["/bin/bash"]
