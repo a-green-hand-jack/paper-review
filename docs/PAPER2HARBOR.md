@@ -19,6 +19,34 @@ Corpus today: **23 papers, 27 reviewable versions**, all published at
 This replaces the ad-hoc baseline harness in `tools/` (see
 [`OSP_BATCH.md`](OSP_BATCH.md)).
 
+## Storage and execution
+
+The durable, runnable distribution is the Hugging Face dataset under
+`paper-review-exam/<task-id>/`. Harbor can run that published snapshot directly
+with `--repo`; it is the right choice for reproducing a released task.
+
+`build/` and `tasks/paper-review-exam/<task-id>/` are local, gitignored build
+products. `pre-harbor emit` recreates them from `papers/`, so use them when
+iterating on the task pipeline. Each generated task embeds only its sanitized
+manuscript material under `environment/paper`; `pre-harbor publish` uploads the
+generated task tree, not the complete local `papers/` corpus. The Hugging Face
+repository may separately carry an archival `papers/` tree, but that is outside
+the runnable `paper-review-exam/` task subtree.
+
+Run Harbor only from a Docker-capable Linux checkout. First confirm the host,
+then build or run the intended task:
+
+```bash
+cd <paper-review-checkout>
+uv run pre-harbor doctor
+uv run pre-harbor emit erdos973--v1
+uv run pre-harbor verify erdos973--v1 --agent oracle
+```
+
+Use `pre-harbor verify` for local generated tasks. To run the published
+snapshot without generating it locally, use the `harbor run --repo` command in
+[Publish](#publish).
+
 ---
 
 ## How to use it
@@ -115,8 +143,9 @@ pre-harbor verify <label> \
 `--agent-env` takes variable *names*. `pre-harbor` passes Harbor v0.20.0 the
 literal template `NAME=${NAME}`; Harbor resolves it from its own environment.
 The printed command uses `'NAME=${NAME}'`, so a shell does not expand a secret
-before Harbor receives the template. Source the credentials first — `set -a;
-source ~/dev/paperbench-harbor/.env; set +a`.
+before Harbor receives the template. Export the required credentials from the
+host's protected credential store before running the command; never place them
+in this repository, a task, or shell history.
 
 Off this machine, the same command prints what to run on the box and exits
 non-zero rather than pretending. Measured on `erdos973--v1`: codex produced a
@@ -304,8 +333,9 @@ Ingest, emit, audit and publish run anywhere. Building images and running
 it; commands that need it and cannot find it print the exact invocation for the
 box and exit non-zero rather than substituting a weaker check.
 
-**`harbor run` happens on the Ubuntu box, driven by codex.** The checkout is at
-`~/dev/paper-review` (ssh host `ubuntu-box`), which has docker, harbor, codex and
-uv. Driving it over ssh works for the deterministic setup, but a failed Harbor
-run needs someone to read the build log and the verifier output and decide what
+**`harbor run` happens on a Docker-capable Linux execution host, driven by
+Codex.** Use the checkout path verified on that host rather than assuming a
+machine-specific location. Driving it over SSH works for deterministic setup,
+but a failed Harbor run needs someone to read the build log and the verifier
+output and decide what
 broke — which is what the agent is there for.
