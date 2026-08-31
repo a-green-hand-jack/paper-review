@@ -72,8 +72,29 @@ def test_unrecognised_directory_is_an_error(tmp_path: Path) -> None:
         discover_paper(empty)
 
 
-def test_real_corpus_has_twenty_one_versions(real_papers: Path) -> None:
-    """17 papers / 21 version tasks, per docs/STATUS_REPORT.md."""
+def test_every_corpus_directory_yields_at_least_one_version(real_papers: Path) -> None:
+    """No directory is silently skipped, whatever shape it arrived in.
+
+    Deliberately not an assertion about how many papers there are. The corpus
+    is meant to grow, and a hardcoded count would turn every addition into a
+    test failure -- punishing exactly the behaviour the pipeline exists to
+    support. What must hold is that nothing is dropped on the floor.
+    """
+    directories = {
+        path.name for path in real_papers.iterdir() if path.is_dir() and path.name[0] != "."
+    }
     versions = discover(real_papers)
-    assert len(versions) == 21
-    assert len({v.slug for v in versions}) == 17
+    assert {v.slug for v in versions} == directories
+    assert all(v.source.exists() for v in versions)
+
+
+def test_multi_version_papers_keep_their_ordering(real_papers: Path) -> None:
+    """Version labels sort as versions, so `--v10` would not precede `--v2`."""
+    by_slug: dict[str, list[str]] = {}
+    for version in discover(real_papers):
+        if version.version:
+            by_slug.setdefault(version.slug, []).append(version.version)
+    assert by_slug, "the corpus should still hold at least one multi-version paper"
+    for slug, labels in by_slug.items():
+        numbers = [int(label.lstrip("v")) for label in labels]
+        assert numbers == sorted(numbers), slug
