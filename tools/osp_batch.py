@@ -63,23 +63,59 @@ def paper_name(path: Path) -> str:
     return relative.with_suffix("").as_posix().replace("/", "__").replace("_", "-").lower()
 
 
+def workspace_mcp_config() -> str:
+    """`.mcp.json` with relative paths resolved against ROOT.
+
+    The repo's `.mcp.json` addresses the MCP server relatively, e.g.
+    `.open-scholar-peer/mcp/.venv/bin/python`. Copying it verbatim into a
+    per-paper workspace leaves those paths pointing at a directory the
+    workspace does not have, so the server never starts -- and it fails
+    silently: the review still runs, just with no scholarly retrieval at all.
+    Every trail produced before this fix reports the search tools as
+    unavailable.
+
+    Only entries that resolve to a real path under ROOT are rewritten, so
+    non-path arguments (`uvx`, package names, flags) are left alone.
+    """
+    config = json.loads((ROOT / ".mcp.json").read_text())
+
+    def absolutise(value: str) -> str:
+        if not isinstance(value, str) or value.startswith("/") or value.startswith("-"):
+            return value
+        candidate = ROOT / value
+        # Deliberately not .resolve(): a venv's bin/python is a symlink to the
+        # base interpreter, and resolving it yields a Python that cannot see the
+        # venv's site-packages. Absolute-but-unresolved keeps the venv intact.
+        return str(candidate) if candidate.exists() else value
+
+    for server in config.get("mcpServers", {}).values():
+        if "command" in server:
+            server["command"] = absolutise(server["command"])
+        if "args" in server:
+            server["args"] = [absolutise(a) for a in server["args"]]
+    return json.dumps(config, indent=2) + "\n"
+
+
 def make_workspace(run_dir: Path, paper: Path, venue: str) -> Path:
     workspace = run_dir / "workspace"
     brain_input = workspace / ".brain" / "input"
     brain_input.mkdir(parents=True)
     shutil.copy2(paper, brain_input / paper.name)
     session = json.loads((ROOT / ".brain" / "session.json").read_text())
-    session["paper"] = {
+    # Preserve any pre-seeded paper fields; only the per-run identifiers are
+    # overwritten. Replacing the whole object would silently drop schema fields
+    # added later, with no error to notice.
+    session.setdefault("paper", {}).update({
         "title": paper.stem,
         "path": str(Path(".brain") / "input" / paper.name),
         "parsed_path": str(Path(".brain") / "input" / "paper.md"),
         "type": paper.suffix.lstrip("."),
-    }
+    })
     session["venue"] = {"name": venue, "year": "", "source_url": "", "criteria_source": "pending"}
     (workspace / ".brain" / "session.json").write_text(json.dumps(session, indent=2) + "\n")
     shutil.copytree(ROOT / ".claude", workspace / ".claude")
     shutil.copytree(ROOT / "docs", workspace / "docs")
-    shutil.copy2(ROOT / ".mcp.json", workspace / ".mcp.json")
+    (workspace / ".mcp.json").write_text(workspace_mcp_config())
     shutil.copy2(ROOT / "AGENTS.md", workspace / "AGENTS.md")
     return workspace
 
