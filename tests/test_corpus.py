@@ -65,6 +65,49 @@ def test_unverified_bib_is_not_private(corpus: Path) -> None:
     assert all(p.name != "unverified.bib" for p in version.private_paths)
 
 
+def test_unassociated_archive_pdf_is_not_treated_as_a_manuscript(tmp_path: Path) -> None:
+    paper = tmp_path / "papers" / "archive_with_figure"
+    paper.mkdir(parents=True)
+    (paper / "source.zip").write_bytes(b"not extracted during discovery")
+    (paper / "diagram.pdf").write_bytes(b"%PDF-1.4 figure")
+
+    (version,) = discover_paper(paper)
+    assert version.pdf is None
+
+
+def test_figure_named_in_a_tex_comment_is_not_a_manuscript(tmp_path: Path) -> None:
+    paper = tmp_path / "papers" / "comment_figure"
+    source = paper / "paper"
+    source.mkdir(parents=True)
+    (source / "main.tex").write_text(
+        "\\documentclass{article}\n% figure.pdf is used below\n", encoding="utf-8"
+    )
+    (source / "figure.pdf").write_bytes(b"%PDF-1.4 figure")
+
+    (version,) = discover_paper(paper)
+    assert version.pdf is None
+
+
+def test_project_pdf_declaration_selects_the_manuscript_not_a_mentioned_figure(
+    tmp_path: Path,
+) -> None:
+    paper = tmp_path / "papers" / "declared_pdf"
+    source = paper / "paper"
+    source.mkdir(parents=True)
+    (source / "main.tex").write_text(
+        "\\documentclass{article}\n"
+        "% figure.pdf is used below\n"
+        "% paper-review-harbor: manuscript-pdf=article.pdf\n",
+        encoding="utf-8",
+    )
+    (source / "article.pdf").write_bytes(b"%PDF-1.4 manuscript")
+    (source / "figure.pdf").write_bytes(b"%PDF-1.4 figure")
+    (source / "main.pdf").write_bytes(b"%PDF-1.4 generic")
+
+    (version,) = discover_paper(paper)
+    assert version.pdf == source / "article.pdf"
+
+
 def test_unrecognised_directory_is_an_error(tmp_path: Path) -> None:
     empty = tmp_path / "papers" / "nothing"
     empty.mkdir(parents=True)

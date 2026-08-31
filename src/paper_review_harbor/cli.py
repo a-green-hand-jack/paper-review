@@ -10,6 +10,7 @@ rather than degrading into a weaker check.
 from __future__ import annotations
 
 import json
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -41,6 +42,7 @@ DEFAULT_PAPERS = Path("papers")
 DEFAULT_SPECS = Path("specs")
 DEFAULT_BUILD = Path("build")
 DEFAULT_TASKS = Path("tasks")
+ENVIRONMENT_NAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
 
 def _err(message: str) -> None:
@@ -360,12 +362,16 @@ def verify(
     if model:
         command += ["-m", model]
     command += ["-y"]
-    # Names, expanded by the shell that runs the command, so a printed command
-    # is copy-pasteable without a key ever passing through here.
+    printable_command = command.copy()
     for name in agent_env or []:
-        command += ["--agent-env", f'"{name}=${name}"']
+        if not ENVIRONMENT_NAME_RE.fullmatch(name):
+            _err(f"invalid agent environment variable name {name!r}")
+            raise typer.Exit(2)
+        command += ["--agent-env", f"{name}=${{{name}}}"]
+        printable_command += ["--agent-env", f"'{name}=${{{name}}}'"]
     command += _host_args(hosts)
-    printable = " ".join(command)
+    printable_command += _host_args(hosts)
+    printable = " ".join(printable_command)
 
     if not shutil.which("harbor") or not shutil.which("docker"):
         typer.echo(

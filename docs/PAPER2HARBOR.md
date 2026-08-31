@@ -41,6 +41,17 @@ have to be called `main.tex` (`superconductivity_uniform_electron_gas` uses
 `ms.tex`). Each version of a paper is an **independent task**: a version fixes
 the previous one's problems, so a review of one is not a review of the other.
 
+For source bundles, a compiled manuscript PDF is recognized only when it is
+named for the detected toplevel TeX file, or is named `main.pdf`, `paper.pdf`,
+or `manuscript.pdf`. An explicitly declared PDF takes priority over those names:
+
+```tex
+% paper-review-harbor: manuscript-pdf=NAME.pdf
+```
+
+Use that exact declaration for any other noncanonical bundled manuscript PDF.
+Arbitrary root-level PDFs are treated as assets, not guessed to be manuscripts.
+
 Optionally add `specs/<slug>.yaml` to override derived metadata or pass the
 agent a brief:
 
@@ -101,9 +112,11 @@ pre-harbor verify <label> \
   --agent-env OPENAI_API_KEY --agent-env OPENAI_BASE_URL
 ```
 
-`--agent-env` takes variable *names*; they are emitted as `"NAME=$NAME"` for the
-running shell to expand, so no key passes through `pre-harbor`. Source the
-credentials first — `set -a; source ~/dev/paperbench-harbor/.env; set +a`.
+`--agent-env` takes variable *names*. `pre-harbor` passes Harbor v0.20.0 the
+literal template `NAME=${NAME}`; Harbor resolves it from its own environment.
+The printed command uses `'NAME=${NAME}'`, so a shell does not expand a secret
+before Harbor receives the template. Source the credentials first — `set -a;
+source ~/dev/paperbench-harbor/.env; set +a`.
 
 Off this machine, the same command prints what to run on the box and exits
 non-zero rather than pretending. Measured on `erdos973--v1`: codex produced a

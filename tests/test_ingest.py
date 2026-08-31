@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import json
 import re
+import zipfile
 from pathlib import Path
 
 import pytest
 
 from paper_review_harbor.corpus import discover, discover_paper
+from paper_review_harbor.emit import EmitConfig, emit_task
 from paper_review_harbor.ingest import (
     STAGED_PDF_NAME,
     IngestError,
@@ -15,6 +17,7 @@ from paper_review_harbor.ingest import (
     latex_to_text,
     strip_tex_comments,
 )
+from paper_review_harbor.spec import TaskSpec
 
 
 def stage(corpus: Path, name: str, tmp_path: Path):
@@ -141,6 +144,122 @@ class TestStagedPdf:
         result = ingest(version, tmp_path / "build")
         names = {p.name for p in result.root.glob("*.pdf")}
         assert names == {"main.pdf"}, "an existing PDF must not be duplicated"
+
+    def test_root_level_figure_does_not_suppress_the_corpus_pdf(
+        self, corpus: Path, tmp_path: Path
+    ) -> None:
+        """A figure PDF is not evidence that the archive bundled a manuscript."""
+        source = corpus / "single_archive" / "source.zip"
+        with zipfile.ZipFile(source, "a") as zipped:
+            zipped.writestr("arbitrary-figure.pdf", "%PDF-1.4 fake figure")
+
+        (version,) = discover_paper(corpus / "single_archive")
+        assert version.pdf == corpus / "single_archive" / "single_archive.pdf"
+        result = ingest(version, tmp_path / "build")
+        staged_pdf = result.root / STAGED_PDF_NAME
+        assert staged_pdf.read_bytes() == version.pdf.read_bytes()
+        assert staged_pdf.read_bytes() != b"%PDF-1.4 fake figure"
+
+        task_dir = emit_task(
+            result,
+            TaskSpec.default_for(version.label),
+            EmitConfig(tasks_root=tmp_path / "tasks"),
+        )
+        instruction = (task_dir / "instruction.md").read_text(encoding="utf-8")
+        assert "`paper.pdf` as the compiled PDF" in instruction
+
+    def test_source_bundled_main_pdf_is_preferred_over_the_corpus_pdf(
+        self, corpus: Path, tmp_path: Path
+    ) -> None:
+        """Archive authors sometimes include main.pdf alongside arbitrary figures."""
+        source = corpus / "single_archive" / "source.zip"
+        with zipfile.ZipFile(source, "a") as zipped:
+            zipped.writestr("main.pdf", "%PDF-1.4 bundled manuscript")
+            zipped.writestr("arbitrary-figure.pdf", "%PDF-1.4 fake figure")
+
+        (version,) = discover_paper(corpus / "single_archive")
+        result = ingest(version, tmp_path / "build")
+        assert result.manuscript_pdf == "main.pdf"
+        assert (result.root / "main.pdf").read_bytes() == b"%PDF-1.4 bundled manuscript"
+        assert not (result.root / STAGED_PDF_NAME).exists()
+
+        task_dir = emit_task(
+            result,
+            TaskSpec.default_for(version.label),
+            EmitConfig(tasks_root=tmp_path / "tasks"),
+        )
+        instruction = (task_dir / "instruction.md").read_text(encoding="utf-8")
+        assert "`main.pdf` as the compiled PDF" in instruction
+
+    @pytest.mark.parametrize("name", ["paper.pdf", "manuscript.pdf"])
+    def test_archive_canonical_pdf_is_preferred_over_the_external_sibling(
+        self, corpus: Path, tmp_path: Path, name: str
+    ) -> None:
+        source = corpus / "single_archive" / "source.zip"
+        bundled = f"%PDF-1.4 bundled {name}".encode()
+        with zipfile.ZipFile(source, "a") as zipped:
+            zipped.writestr(name, bundled)
+
+        (version,) = discover_paper(corpus / "single_archive")
+        result = ingest(version, tmp_path / "build")
+        assert result.manuscript_pdf == name
+        assert (result.root / name).read_bytes() == bundled
+        assert (result.root / name).read_bytes() != version.pdf.read_bytes()
+
+    def test_archive_pdf_matching_the_detected_tex_is_preferred(
+        self, corpus: Path, tmp_path: Path
+    ) -> None:
+        source = corpus / "single_archive" / "source.zip"
+        bundled = b"%PDF-1.4 bundled article"
+        with zipfile.ZipFile(source, "w") as zipped:
+            zipped.writestr(
+                "article.tex", "\\documentclass{article}\\begin{document}x\\end{document}"
+            )
+            zipped.writestr("article.pdf", bundled)
+
+        (version,) = discover_paper(corpus / "single_archive")
+        result = ingest(version, tmp_path / "build")
+        assert result.main_tex == "article.tex"
+        assert result.manuscript_pdf == "article.pdf"
+        assert (result.root / "article.pdf").read_bytes() == bundled
+        assert not (result.root / STAGED_PDF_NAME).exists()
+
+    def test_archive_declared_pdf_is_preferred_over_canonical_names(
+        self, corpus: Path, tmp_path: Path
+    ) -> None:
+        source = corpus / "single_archive" / "source.zip"
+        declared = b"%PDF-1.4 bundled release"
+        with zipfile.ZipFile(source, "w") as zipped:
+            zipped.writestr(
+                "main.tex",
+                "\\documentclass{article}\n"
+                "% paper-review-harbor: manuscript-pdf=release.pdf\n"
+                "\\begin{document}x\\end{document}",
+            )
+            zipped.writestr("main.pdf", b"%PDF-1.4 generic")
+            zipped.writestr("release.pdf", declared)
+
+        (version,) = discover_paper(corpus / "single_archive")
+        result = ingest(version, tmp_path / "build")
+        assert result.manuscript_pdf == "release.pdf"
+        assert (result.root / "release.pdf").read_bytes() == declared
+        assert not (result.root / STAGED_PDF_NAME).exists()
+
+    def test_real_source_bundled_pdf_is_preserved(
+        self, real_papers: Path, tmp_path: Path
+    ) -> None:
+        """This corpus manuscript uses a meaningful PDF name instead of main.pdf."""
+        (version,) = discover_paper(real_papers / "de_novo_nanobody_discovery")
+        result = ingest(version, tmp_path / "build")
+        assert result.manuscript_pdf == "VHHreport.pdf"
+
+        task_dir = emit_task(
+            result,
+            TaskSpec.default_for(version.label),
+            EmitConfig(tasks_root=tmp_path / "tasks"),
+        )
+        instruction = (task_dir / "instruction.md").read_text(encoding="utf-8")
+        assert "`VHHreport.pdf` as the compiled PDF" in instruction
 
     def test_every_real_task_ships_a_rendered_paper(
         self, real_papers: Path, tmp_path: Path

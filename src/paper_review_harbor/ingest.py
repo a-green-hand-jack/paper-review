@@ -27,7 +27,7 @@ from collections.abc import Iterable
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
-from .corpus import PaperVersion
+from .corpus import PaperVersion, declared_manuscript_pdfs
 
 #: arXiv ships this alongside the sources; it names the toplevel file.
 ARXIV_README = "00README.json"
@@ -96,6 +96,7 @@ class IngestResult:
     label: str
     root: Path
     main_tex: str
+    manuscript_pdf: str | None
     paper_map: PaperMap
     excluded: tuple[str, ...]
     sanitised: tuple[str, ...]
@@ -158,10 +159,32 @@ def _materialise(version: PaperVersion, destination: Path) -> None:
 #: staging `v1.pdf` tells the agent its manuscript is one of several versions,
 #: which is a hint about where to look for the answer.
 STAGED_PDF_NAME = "paper.pdf"
+CANONICAL_BUNDLED_PDF_NAMES = ("main.pdf", "paper.pdf", "manuscript.pdf")
 
 
-def stage_sibling_pdf(root: Path, version: PaperVersion) -> str | None:
-    """Copy in the corpus PDF when the source bundle carries none.
+def bundled_manuscript_pdf(root: Path, version: PaperVersion, main_tex: str) -> Path | None:
+    """Return a declared or canonical manuscript PDF present in the source bundle."""
+    names = [
+        *declared_manuscript_pdfs(root / main_tex),
+        Path(main_tex).with_suffix(".pdf").as_posix(),
+        *CANONICAL_BUNDLED_PDF_NAMES,
+    ]
+    for name in dict.fromkeys(names):
+        candidate = root / name
+        if candidate.is_file():
+            return candidate
+    if version.pdf is None or version.source_kind != "directory":
+        return None
+    try:
+        relative = version.pdf.relative_to(version.source)
+    except ValueError:  # pragma: no cover - source_kind guards this shape
+        return None
+    candidate = root / relative
+    return candidate if candidate.is_file() else None
+
+
+def stage_sibling_pdf(root: Path, version: PaperVersion, main_tex: str) -> str | None:
+    """Copy in the corpus PDF unless the source bundle carries its manuscript.
 
     arXiv e-print bundles hold source only; the compiled PDF sits beside the
     tarball in the corpus, so eleven of the papers here would otherwise reach
@@ -170,9 +193,10 @@ def stage_sibling_pdf(root: Path, version: PaperVersion) -> str | None:
     and looked at -- neither of which works if compiling from source is the
     only way to get one.
     """
+    bundled = bundled_manuscript_pdf(root, version, main_tex)
+    if bundled is not None:
+        return bundled.relative_to(root).as_posix()
     if version.pdf is None or not version.pdf.is_file():
-        return None
-    if any(root.glob("*.pdf")):
         return None
     destination = root / STAGED_PDF_NAME
     shutil.copy2(version.pdf, destination)
@@ -587,9 +611,9 @@ def ingest(version: PaperVersion, build_root: Path) -> IngestResult:
     _flatten_single_dir(root)
     excluded = _strip_private(root, version)
     sanitised = strip_bib_preamble(root)
-    stage_sibling_pdf(root, version)
 
     main = find_main_tex(root)
+    manuscript_pdf = stage_sibling_pdf(root, version, main)
     paper_map = build_map(root, version.label, main)
 
     source_sha = (
@@ -604,6 +628,7 @@ def ingest(version: PaperVersion, build_root: Path) -> IngestResult:
         label=version.label,
         root=root,
         main_tex=main,
+        manuscript_pdf=manuscript_pdf,
         paper_map=paper_map,
         excluded=tuple(excluded),
         sanitised=tuple(sanitised),
