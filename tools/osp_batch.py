@@ -7,6 +7,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import hashlib
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -81,21 +82,24 @@ def osp_provenance() -> dict[str, str | bool | None]:
     }
 
 
-# Directories that hold figures rather than manuscripts; a PDF nested in any of
-# these is a figure, not a review task. `figs/` is used by the two writing-sample
-# papers (compression_induced_folding_of_a_sheet, transport_in_one_channel_luttinger_liquid),
-# `figures/` by older corpus entries, and `images/` by pandoc-style exports.
-FIGURE_DIRS = {"figures", "figs", "images"}
+# Directories that hold a manuscript's assets rather than manuscripts. A PDF
+# inside one of these is a figure, not a paper. The names vary per submission
+# because each journal's template names them differently, so this is a set and
+# not a single string: `compression_induced_folding_of_a_sheet/figs/fig1.pdf`
+# was silently discovered as a five-page "paper" until `figs` was added here.
+ASSET_DIRS = {"figures", "figs", "fig", "images", "img", "assets", "graphics"}
 
 
 def papers() -> list[Path]:
-    return sorted(
-        path
-        for path in (ROOT / "papers").glob("**/*.pdf")
-        if path.is_file()
-        and not any(part in FIGURE_DIRS for part in path.parts)
-        and not path.name.startswith("fig-")
-    )
+    def is_manuscript(path: Path) -> bool:
+        if not path.is_file():
+            return False
+        if ASSET_DIRS & {part.lower() for part in path.parts}:
+            return False
+        # `fig-1.pdf`, `fig1.pdf`, `figure2.pdf` sitting beside the manuscript.
+        return not re.match(r"^fig(ure)?[-_]?\d", path.stem, re.IGNORECASE)
+
+    return sorted(path for path in (ROOT / "papers").glob("**/*.pdf") if is_manuscript(path))
 
 
 def paper_name(path: Path) -> str:

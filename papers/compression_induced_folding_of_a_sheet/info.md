@@ -23,3 +23,14 @@
 ## 备注
 
 来自么志远发送的 examples.zip（其中「这两篇写得很好」）。作为写作质量正面示例用于 benchmark。
+## paper.pdf 的来源
+
+`paper.pdf` 不是原始投稿件，是我们从 `paper.tex` 编译出来的，供 benchmark 作为输入使用
+（osp_batch 以 PDF 为 manuscript 入口）。
+
+- 编译：`latexmk -pdf`，4 页
+- `\documentclass{revtex4}` 在当前 TeX Live 中已不存在，编译时用一个 shim class 把选项
+  转发给 `revtex4-2`。**排版结果因此与 2011 年的原始 revtex4 输出不完全一致**，评审
+  Clarity 维度时须知道这一点：行距、图文位置可能有细微差异，但正文、公式、图内容未改动。
+- `figs/` 里的图在编译时被复制到源码同级目录，因为 tex 里写的是 `\includegraphics{fig1.pdf}`
+  而非 `figs/fig1.pdf`。
