@@ -81,11 +81,20 @@ def osp_provenance() -> dict[str, str | bool | None]:
     }
 
 
+# Directories that hold figures rather than manuscripts; a PDF nested in any of
+# these is a figure, not a review task. `figs/` is used by the two writing-sample
+# papers (compression_induced_folding_of_a_sheet, transport_in_one_channel_luttinger_liquid),
+# `figures/` by older corpus entries, and `images/` by pandoc-style exports.
+FIGURE_DIRS = {"figures", "figs", "images"}
+
+
 def papers() -> list[Path]:
     return sorted(
         path
         for path in (ROOT / "papers").glob("**/*.pdf")
-        if path.is_file() and "figures" not in path.parts and not path.name.startswith("fig-")
+        if path.is_file()
+        and not any(part in FIGURE_DIRS for part in path.parts)
+        and not path.name.startswith("fig-")
     )
 
 

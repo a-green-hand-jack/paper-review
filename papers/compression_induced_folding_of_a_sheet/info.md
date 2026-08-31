@@ -16,8 +16,9 @@
 
 ## 文件
 
-- `paper.tex`：LaTeX 源码
-- `figs/`：fig1.pdf, fig2a.pdf, fig2b.pdf, fig3a.pdf, fig3b.pdf
+- `paper/main.tex`：LaTeX 源码（2026-08-31 从根目录 `paper.tex` 归一化为 `paper/` 布局）
+- `paper/figs/`：fig1.pdf, fig2a.pdf, fig2b.pdf, fig3a.pdf, fig3b.pdf
+- `paper/main.pdf`：Ubuntu TeXLive 2026 编译产物（5 页，2026-08-31）
 
 ## 备注
 
