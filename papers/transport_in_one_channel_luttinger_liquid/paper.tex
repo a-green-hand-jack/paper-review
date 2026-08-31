@@ -1,0 +1,189 @@
+%!TEX program = xelatex -shell-escape
+\documentclass[11pt]{article}
+\usepackage[a4paper, total={150mm,227mm}, left=30mm, top=30mm]{geometry}
+\usepackage{fontspec}
+\usepackage{amsmath, amssymb, amsthm, mathtools, amsfonts, mathrsfs}
+\usepackage{bm, cancel, xfrac, nicefrac, stackrel}
+\usepackage{braket, slashed, physics, simplewick, wasysym}
+\usepackage{longtable,booktabs,array}
+\usepackage{calc}
+\usepackage{etoolbox}
+\usepackage{graphicx}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{wrapfig}
+\usepackage[svgnames, table]{xcolor}
+\usepackage{minted}
+\usepackage{microtype}
+\usepackage[bookmarks=true,hidelinks,colorlinks=true]{hyperref}
+% \setlength{\parindent}{0pt}
+\makeatletter
+\patchcmd\longtable{\par}{\if@noskipsec\mbox{}\fi\par}{}{}
+\makeatother
+\IfFileExists{footnotehyper.sty}{\usepackage{footnotehyper}}{\usepackage{footnote}}
+\makesavenoteenv{longtable}
+\setcounter{secnumdepth}{-\maxdimen}
+\setlength{\emergencystretch}{3em}
+\providecommand{\tightlist}{%
+\setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\title{Transport in a One-Channel Luttinger Liquid}
+\author{%
+C. L. Kane\\
+{\small Department of Physics, University of Pennsylvania}\\
+{\small Philadelphia, Pennsylvania 19104}\\[0.75em]
+Matthew P. A. Fisher\\
+{\small IBM Research, T. J. Watson Research Center, P.O. Box 218}\\
+{\small Yorktown Heights, New York 10598}}
+\date{}
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+We study theoretically the transport of a one-channel Luttinger liquid through a weak link. For repulsive electron interactions, the electrons are completely reflected by even the smallest scatterer, leading to a truly insulating weak link, in striking contrast to that for noninteracting electrons. At finite temperature ( $T$ ) the conductance is nonzero, and is predicted to vanish as a power of $T$. At $T=0$ power-law current-voltage characteristics are predicted. For attractive interactions, a Luttinger liquid is argued to be perfectly transmitted through even the largest of barriers. The role of Fermi-liquid leads is also explored.
+\end{abstract}
+
+In recent years there has been tremendous interest in electron transport through barriers or weak links in which Coulomb effects play an important role \cite{ref1}. A central feature is the Coulomb blockade, due to the Coulomb barrier that must be overcome to transfer a single electron across a weak link. In the so-called ``orthodox'' theory \cite{ref2}, no current is possible at $T=0$ until the voltage across the link exceeds the capacitive energy, $e^{2} / C$. In more recent refinements \cite{ref3}, which allow for tunneling through the Coulomb barrier via virtual states between two weak links, a small Ohmic leakage current is predicted. However, a number of recent theories \cite{ref4,ref5}, which study the effects of a series lead resistance on the tunneling process, make the striking prediction that the Ohmic leakage current is suppressed to zero at $T=0$ for any nonzero series lead resistance. In this case the weak link is predicted to be a true insulator with strictly zero linear conductance. If the transport through the weak link is viewed as a scattering problem as in the Landauer theory \cite{ref6}, this result is most strange indeed. At least for noninteracting electrons it is clear that there will always be some nonzero transmission through even the weakest of weak links. Are we to believe that inclusion of a series lead resistance changes this qualitatively, and can lead to a truly insulating link?
+
+In this Letter we consider the transport of a onechannel interacting electron gas through a weak link. In contrast to previous work on the Coulomb blockade, we include explicitly electron-electron interactions even away from the weak link. As we shall see, these play a most crucial role. Our motivation for studying one dimension (1D) is twofold. First, it has become possible over the past several years to fabricate single-channel nanostructures, and interesting effects related to the Coulomb blockade have been observed \cite{ref7}. In addition, in contrast to higher dimensions, precise statements can be made in 1D even in the presence of interactions
+
+Away from charge-density-wave instabilities the 1D spinless interacting electron gas is a Luttinger liquid \cite{ref8}, which is characterized by power-law decay of various correlation functions with exponents which depend on the strength of the interactions \cite{ref8,ref9}. In the following we show that the transport of a Luttinger liquid through a weak link is strikingly different from that in a Fermi liquid (i.e., noninteracting electrons). The behavior depends critically on whether the electron interactions are repulsive or attractive. For repulsive interactions, an arbitrarily small obstacle is shown to lead to complete reflection and gives a zero linear conductance at $T=0$. At $T \neq 0$ the conductance is found to vanish as a power of temperature \cite{ref10}. Fermi-liquid leads attached to a onechannel sample of length $L$ cut off this power law below a crossover temperature $T_{L}=\hbar v_{F} / L k_{B}$, where $v_{F}$ is the Fermi velocity. A Luttinger liquid with attractive electron interactions, on the other hand, is argued to be perfectly transmitted through even the largest of barriers. The Fermi liquid with no interactions has a finite conductance \cite{ref6} which depends on the strength of the barrier, and lies on the boundary between these types of behavior.
+
+To model a Luttinger liquid, we adopt Haldane's approach \cite{ref11} to describe 1D spinless fermions in which the Fermi field $\psi(x)$ is expressed in terms of two boson fields $\phi$ and $\theta$ :
+
+\begin{equation}
+\psi^{\dagger}(x) \sim \sum_{n_{\text {odd }}} \exp \left\{i n\left[\sqrt{\pi} \theta(x)+k_{F} x\right]\right\} \exp [i \sqrt{\pi} \phi(x)] 
+\end{equation}
+
+The boson fields satisfy the commutation relations $\left[\phi(x), \theta\left(x^{\prime}\right)\right]=-i \Theta\left(x-x^{\prime}\right)$, so their respective canonical momenta are given by $\Pi_{\phi}=\partial_{x} \theta$ and $\Pi_{\theta}=\partial_{x} \phi$. These have a simple physical interpretation: $\partial_{x} \phi$ is essentially the current and $\partial_{x} \theta$ is proportional to deviations of the particle density from its mean density $\rho=k_{F} / \pi$, with $k_{F}$ the Fermi wave vector. The sum over $n$ in (1) accounts for the discrete nature of the particle density. Fermi statistics is due to $n$ being odd: Even $n$ would give a bosonic field $\psi$.
+
+The Hamiltonian for a Luttinger liquid can be written as $\hat{H}=\int \mathcal{H} d x$, with
+
+\begin{equation}
+\mathcal{H}=(1 / 2 g)\left(\Pi_{\phi}\right)^{2}+\frac{1}{2} g\left(\partial_{x} \phi\right)^{2} . 
+\end{equation}
+
+The partition function $Z=\operatorname{Tr} \exp (-\beta \hat{H})$ can be expressed as an imaginary-time path integral over $\phi(x, \tau)$, with the Euclidean Lagrangian
+
+\begin{equation}
+\mathcal{L}=(g / 2)\left(\partial_{\mu} \phi\right)^{2} . 
+\end{equation}
+
+Here $\mu$ labels $x$ and imaginary time $\tau$. We have rescaled space and time to make the Fermi velocity equal to 1. This leaves a single dimensionless coupling constant, $g$, which characterizes the Luttinger liquid. The Hamiltonian and Lagrangian can be expressed in terms of the $\theta$ field by letting $\phi \rightarrow \theta, \Pi_{\phi} \rightarrow \Pi_{\theta}$, and $g \rightarrow 1 / g$. The ``selfdual'' point of this transformation, $g=1$, corresponds to noninteracting electrons. This can be inferred by evaluating the single electron Green's function, $\mathcal{S}(x, \tau)$ $=\left\langle T_{\tau} \psi^{\dagger}(x, \tau) \psi(0,0)\right\rangle$ using (1)-(3):
+
+\begin{equation}
+g(x, 0) \sim \sum_{n_{\text {odd }}} \exp \left(i n k_{F} x\right) x^{-\left(g^{-1}+g n^{2}\right) / 2} 
+\end{equation}
+
+Noting that $n= \pm 1$ dominates the long-distance behavior, we see that $g=1$ gives a $1 / x$ decay appropriate for noninteracting electrons, whereas for $g \neq 1$ a larger power is found corresponding to an interacting Luttinger liquid. The corresponding tunneling density of states (DOS), $\rho(\varepsilon)$, varies as
+
+\begin{equation*}
+    \rho(\varepsilon) \sim \varepsilon^{(g+1 / g) / 2-1},
+\end{equation*}
+
+which vanishes with energy for all $g \neq 1$. For a translationally invariant interacting 1D electron gas, Haldane \cite{ref11} has shown that $g=\pi \hbar \sqrt{\rho \kappa / m}$, where $m$ is the electron mass and $\kappa=\partial \rho / \partial \mu$ is the compressibility, so that repulsive interactions correspond to $g<1$, whereas attractive interactions will give $g>1$.
+
+Before considering the role of a weak link we first evaluate a two-terminal conductance for the pure Luttinger liquid. Following Fisher and Lee \cite{ref12} we apply a uniform electric field in a restricted interval $0<x<L$, at frequency $\omega$, and evaluate the current response. The conductance $G$ is thereby expressed as
+
+\begin{equation}
+G=\frac{e^{2}}{\pi \hbar} \frac{1}{L^{2} \omega} \int_{x, x^{\prime}, \tau} e^{-i \omega \tau}\left\langle T_{\tau} J(x, \tau) J\left(x^{\prime}, 0\right)\right\rangle, 
+\end{equation}
+
+where the spatial integrals run only between 0 and $L$, and the current $J=\partial_{\tau} \theta$. Evaluating this using $\mathcal{L}$ in (3) and taking the dc limit, $\omega \rightarrow 0$, gives $G=\left(e^{2} / h\right) g$. This result, obtained originally by Apel and Rice \cite{ref13}, shows that the ``rule'' of $e^{2} / h$ conductance per channel \cite{ref6} is only correct for noninteracting electrons (or more generally for a Fermi liquid). In 1D interactions change the Fermi liquid into a Luttinger liquid and the conductance per channel is multiplied by $g$.
+
+Consider now the effect of a weak link in an otherwise perfect one-channel Luttinger liquid. We analyze this problem perturbatively in two limits: (1) a very weak barrier (almost perfect conductor) and (2) a very weak link (almost perfect insulator). In the first limit, the zeroth-order problem is the uniform Luttinger liquid described by (3), to which we add a weak local perturbation at, say, $x=0$. The perturbation will involve either a weak scattering potential, $\lambda \psi^{\dagger}(x=0) \psi(x=0)$, or, in a lattice model, we could reduce the hopping strength across one link at $x=0$ by a fraction $t=1-\lambda$. As we shall see, they both have the same effect. In order to analyze this limit, it is convenient to consider the dual (or $\theta$ ) representation of (3) and perform a partial trace, integrating out $\theta(x)$ for all $x$ away from the perturbation. This leaves an effective action in terms of $\theta(x=0, \tau)$ :
+
+\begin{equation}
+S_{\mathrm{eff}}=\frac{1}{g} \int_{\omega}|\omega||\theta(\omega)|^{2} . 
+\end{equation}
+
+In imaginary time this action is nonlocal; the interactions are mediated by the low-lying fluctuations of the Luttinger liquid. A renormalization-group (RG) transformation which integrates out high frequencies and then rescales frequency [but not $\theta(\tau)$ ] leaves the action invariant. Thus (6) is a fixed-point action. Using (1), we may express the perturbation in terms of $\theta(\tau)$. In either case it will be a sum of terms of the form
+
+\begin{equation}
+\delta S_{n}=\lambda_{n} \int_{\tau} \cos [\sqrt{\pi} 2 n \theta(\tau)], 
+\end{equation}
+
+with $n=1,2, \ldots$. The action (6) and (7) is formally equivalent to the Caldeira-Leggett \cite{ref14} model for a resistively shunted Josephson junction, and has been analyzed in some detail in this context \cite{ref15}. A straightforward RG transformation for small $\lambda_{n}$ gives the leading-order recursion relation: $\partial \lambda_{n} / \partial l=\left(1-n^{2} g\right) \lambda_{n}$. The most relevant term is thus $\delta S_{1}$, which becomes relevant for $g<1$. The important feature of this perturbation, which is common to the barrier or the weakened link, is the presence of $2 k_{F}$ scattering.
+
+The corresponding RG flows for small $\lambda=1-t$ are shown in the upper part of Fig. 1. We see that a weak barrier is an irrelevant perturbation for attractive interactions $(g>1)$ and relevant for repulsive interactions $(g<1)$. For noninteracting electrons it is marginal. Physically, for $g>1$ an incoming wave suffers less and less reflection upon lowering its incident energy, and in the limit of zero incident energy (i.e., at the ``Fermi'' energy) one gets perfect transmission. This can be seen formally by evaluating the conductance to order $\lambda^{2}$ using (5), which gives $G-g\left(e^{2} / h\right) \simeq-\lambda^{2} \omega^{2(g-1)}$; i.e., perfect transmission in the dc limit. For repulsively interacting electrons with $g<1, \lambda$ flows to large values under the RG and the perturbation theory breaks down. As we show below, in this case, rather than perfect transmission, we find total reflection.
+
+The regime $g<1$ can be more easily analyzed in the opposite limit of a large barrier or a very weak link. To this end we consider the lattice model with $t \ll 1$. The
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{./images/fig1.jpg}
+    \caption{}
+\end{figure}
+FIG. 1. Schematic flow diagram for ID interacting electrons with one link weakened by fraction $t$. Here $G$ is the conductance across the weak link. Perfect reflection is found for repulsive interactions, $g<1$, and perfect transmission for attractive interactions, $g>1$. Noninteracting electrons, $g=1$, are marginal.
+
+zeroth-order problem $(t=0)$ consists of two semi-infinite lines, which can be described by the Lagrangian (3) with the $x$ integration restricted to positive or negative $x$, respectively. It is again convenient to perform a partial trace (in the $\phi$ representation), integrating out $\phi(x)$ for all $x$ away from the weakened link. We will then obtain an effective action in terms of the phases $\phi_{ \pm}(\tau)$ on each side of the link. If we further define $\phi=\left(\phi_{+}-\phi_{-}\right) / 2$ and $\Phi=\left(\phi_{+}+\phi_{-}\right) / 2$, we may integrate out $\Phi(\tau)$ and obtain the following effective action in terms of the phase difference across the junction:
+
+\begin{equation}
+S_{\mathrm{eff}}=g \int_{\omega}|\omega||\phi(\omega)|^{2} . 
+\end{equation}
+
+Note that this expression is precisely the dual of (6). Again, we may express the perturbation $t$ in terms of $\psi$, and the most relevant operator is
+
+\begin{equation}
+\delta S \sim t \int_{\tau} \cos [2 \sqrt{\pi} \phi] 
+\end{equation}
+
+which corresponds to hopping an electron across the weak link. In this case the leading-order RG flows for small $t$ are $\partial t / \partial l=\left(1-g^{-1}\right) t$, which is shown in Fig. 1. Thus, once again $g=1$ is marginal, but now the perturbation is irrelevant for $g<1$. For repulsively interacting electrons with $g<1$, an initially weak hopping scales to zero at low energies. As shown below, this corresponds to an insulating link with strictly zero linear conductance.
+
+This can be seen by deriving an expression for the nonlinear current-voltage characteristics as a perturbation expansion in powers of $t$. Upon applying a voltage $V$ across the weak link by adding a vector potential into the argument of the cosine in (9), we can obtain an expression for the current response to second order in $t$ :
+
+\begin{equation}
+I \sim t^{2}\left(1-e^{-\beta V}\right) \tilde{P}(V), 
+\end{equation}
+
+where the Fourier transform of $\tilde{P}(V)$, denoted $P(t)$, satisfies
+
+\begin{equation}
+\begin{split}
+\ln P(t)={}&\int_{0}^{E_{F}} d \omega(2 / \omega g)
+[\operatorname{coth}(\beta \omega / 2)(-1+\cos \omega t) \\
+&{}-i \sin \omega t]
+\end{split}
+\end{equation}
+
+where $E_{F}$ is the Fermi energy. This result is similar (but not identical) to that obtained by Devoret et al. \cite{ref5} who studied the effects of a series resistor (modeled à la Caldeira and Leggett \cite{ref14}) on a tunnel junction. The bosonic excitations of the Luttinger-liquid leads described by (3) are an explicit physical realization of the CaldeiraLeggett oscillators. In the expression derived by Devoret et al., though, when the series lead resistance is set to zero, an Ohmic $I-V$ curve follows. In contrast, as we see below, (10) and (11) only give an Ohmic $I-V$ curve when the electrons in the ID leads are not interacting $(g=1)$, so that the series lead resistance is $h / e^{2}$.
+
+Evaluating (10) and (11) at $T=0$ gives a power-law $I-V$ curve: $I-t^{2} V^{2 / g-1}$. For noninteracting fermions $(g=1)$ this gives the expected Ohmic conductance, whereas the expansion breaks down as $V \rightarrow 0$ for $g>1$. For $g<1$, though, a truly insulating link with strictly zero linear conductance is found. At $T \neq 0$ the linear conductance vanishes as a power law for $g<1$ :
+
+\begin{equation}
+G \sim t^{2} T^{2 / g-2} 
+\end{equation}
+
+An approximate interpolation formula when both $T$ and $V$ are nonzero is $I \sim t^{2}\left[\operatorname{Im}(T+i V)^{2 / g-1}\right]$. Notice that $G$ in (12) is not proportional to the square of the tunneling DOS: $\rho(\varepsilon=T)^{2} \sim T^{g+1 / g-2}$. This is because the relevant DOS for the conductance is that for tunneling into the end of a semi-infinite Luttinger liquid, which varies as $\rho_{\text {end }}(\varepsilon) \sim \varepsilon^{1 / g-1}$. Note that for all $g \neq 1, \rho_{\text {end }}(\varepsilon)$ varies with a different power than the bulk DOS $\rho(\varepsilon)$.
+
+For the lattice electron model with one weak link, it is of course possible to calculate the two-terminal conductance for the noninteracting case $(g=1)$ for all $t$. One finds $G=\left(e^{2} / h\right) 4 t^{2} /\left(1+t^{2}\right)$. Thus, in the RG sense, the line $g=1$ corresponds to a ``fixed line'' (see Fig. 1). In view of this soluble case, it seems extremely plausible \cite{ref15} that for $g \neq 1$ one can join together the RG flows between the two perturbative regimes ( $1-t$ and small $t$ ). This would imply that $G=0$ for all $t \neq 1$ when $g<1$, whereas $G=g e^{2} / h$ for all nonzero $t$ when $g>1$.
+
+Real experiments will be complicated by the fact that any one-channel wire must eventually open up into wide leads, where presumably Fermi-liquid theory is applicable. This defines a length scale $L$ or a time scale $L / v_{F}$, which will cut off the infrared divergences associated with the Luttinger liquid. To study this we consider an idealized model of an infinite one-channel wire with electron interactions present only in the ``sample'' with $|x|<L$, but absent in the (Fermi-liquid) ``leads,'' $|x|>L$. In the absence of the weak link, which we will take to be placed in the middle of the sample at $x=0$, the appropriate Lagrangian is given by (3), but with $g$ depending on $x$, be- ing equal to $g$ in the sample and equal to 1 in the leads. It is convenient once again to integrate out all fluctuations away from the weak link, to arrive at an effective action as in (8), except with $g \rightarrow g_{L}(\omega)$, where $g_{L}(\omega)$ crosses over from $g$ at high frequencies to 1 at low frequencies. The crossover frequency is given by $\omega_{L}=\hbar v_{F} /$ $L$, and is a measure of the time that an electron originating at the weak link takes to reach the Fermi-liquid leads. For $\omega \gtrsim \omega_{L}$ we thus expect Luttinger-liquid behavior (i.e. $g \neq 1$ ). The $I-V$ curves are given by (10) and (11) as before, except now $g$ in (11) is replaced by (the analytic continuation to real frequencies of) $g_{L}(\omega)$. This gives a current which crosses over at a voltage $V_{L}=\hbar \omega_{L} / e$, from a power law at higher voltages ( $V^{2 / g-1}$ ) to linear (Ohmic) at lower voltages. At $T \neq 0$ the linear conductance crosses over from a power law $T^{2 / g-2}$, above a temperature $T_{L}=\hbar \omega_{L} / k_{B}$, to a temperature-independent constant at lower temperatures.
+
+An experimental search for such power laws will be greatly facilitated if $g$ can be estimated. A rough expression follows by adding a Coulomb energy, $e^{2} / \varepsilon$, with $\varepsilon$ an appropriate dielectric constant, to the inverse compressibility for a noninteracting electron gas. Using \cite{ref11} $g=\pi \hbar \sqrt{\rho \kappa / m}$ this gives $g^{2} \simeq\left(1+e^{2} / 2 a \varepsilon E_{F}\right)^{-1}$, where $a$ is the interelectron spacing.
+
+There is clearly a need for much future work exploring the transport of Luttinger liquids through weak links to resolve questions such as: How are the above results modified when two barriers are present, which allows for the possibility of resonant tunneling, and what role is played by spin and multiple transverse channels?
+
+It is a pleasure to acknowledge the Aspen Center of Physics where this work was initiated. We would like to thank I. Affleck, M. Buettiker, D. S. Fisher, S. Girvin, L.
+
+Glazman, D. Huse, and D. Loss for clarifying conversations.
+
+\begin{thebibliography}{99}
+\bibitem{ref1} For a recent review, see D. V. Averin and K. K. Likharev, in \textit{Mesoscopic Phenomena in Solids}, edited by B. L. Altshuler, P. A. Lee, and R. A. Webb (Elsevier, Amsterdam, 1990).
+\bibitem{ref2} D. B. Averin and K. K. Likharev, J. Low Temp. Phys. \textbf{62}, 345 (1986); E. Ben-Jacob, D. J. Bergman, B. J. Matkowsky, and Z. Schuss, Phys. Rev. B \textbf{34}, 1572 (1986).
+\bibitem{ref3} D. V. Averin and Yu. V. Nazarov, Phys. Rev. Lett. \textbf{65}, 2446 (1990).
+\bibitem{ref4} S. M. Girvin, L. I. Glazman, M. Jonson, D. R. Penn, and M. D. Stiles, Phys. Rev. Lett. \textbf{64}, 3183 (1990).
+\bibitem{ref5} M. H. Devoret, D. Esteve, H. Grabert, G.-L. Ingold, H. Pothier, and C. Urbina, Phys. Rev. Lett. \textbf{64}, 1824 (1990).
+\bibitem{ref6} R. Landauer, Philos. Mag. \textbf{21}, 863 (1970); M. Büttiker, Phys. Rev. Lett. \textbf{57}, 1761 (1986).
+\bibitem{ref7} U. Meirav, M. A. Kastner, M. Heiblum, and S. J. Wind, Phys. Rev. B \textbf{40}, 5871 (1989).
+\bibitem{ref8} F. D. M. Haldane, J. Phys. C \textbf{14}, 2585 (1981).
+\bibitem{ref9} J. Solyom, Adv. Phys. \textbf{28}, 201 (1970).
+\bibitem{ref10} In the limit of very strong repulsive interactions this result has been obtained independently by L. I. Glazman, I. M. Ruzin, and B. I. Shklovskii (to be published), which we learned after this work was completed.
+\bibitem{ref11} F. D. M. Haldane, Phys. Rev. Lett. \textbf{47}, 1840 (1981).
+\bibitem{ref12} D. S. Fisher and P. A. Lee, Phys. Rev. B \textbf{23}, 6851 (1981).
+\bibitem{ref13} W. Apel and T. M. Rice, Phys. Rev. B \textbf{26}, 7063 (1982).
+\bibitem{ref14} A. O. Caldeira and A. J. Leggett, Ann. Phys. (N.Y.) \textbf{149}, 374 (1983).
+\bibitem{ref15} A. Schmid, Phys. Rev. Lett. \textbf{51}, 1506 (1983); F. Guinea, V. Hakim, and A. Muramatsu, Phys. Rev. Lett. \textbf{54}, 263 (1985); M. P. A. Fisher and W. Zwerger, Phys. Rev. B \textbf{32}, 6190 (1985).
+\end{thebibliography}
+
+\end{document}
