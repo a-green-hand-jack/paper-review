@@ -78,3 +78,32 @@ def test_verify_prints_handoff_when_tools_and_agent_environment_are_absent(
 
     assert result.exit_code == 3
     assert "--agent-env 'MISSING_HARBOR_API_KEY=${MISSING_HARBOR_API_KEY}'" in result.output
+
+
+def test_verify_expands_paper_run_alias_and_agent_options(tmp_path: Path, monkeypatch) -> None:
+    label = "example"
+    tasks = tmp_path / "tasks"
+    _task(tasks, label)
+    received: list[list[str]] = []
+    monkeypatch.setattr(cli.shutil, "which", lambda _: "/usr/bin/available")
+    monkeypatch.setattr(cli.subprocess, "call", lambda command: received.append(command) or 0)
+
+    result = CliRunner().invoke(
+        cli.app,
+        [
+            "verify", label, "--tasks", str(tasks), "--agent", "paper-run",
+            "--model", "openai/gpt-5.6-sol", "--network", "agent",
+            "--variant", "medium", "--timeout-multiplier", "4", "--no-delete",
+            "--setup-timeout-multiplier", "4",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    command = received[0]
+    assert cli.PAPER_RUN_AGENT in command
+    assert ["--agent-kwarg", "variant=medium"] == command[
+        command.index("--agent-kwarg") : command.index("--agent-kwarg") + 2
+    ]
+    assert "--agent-timeout-multiplier" in command
+    assert "--agent-setup-timeout-multiplier" in command
+    assert "--no-delete" in command

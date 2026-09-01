@@ -311,6 +311,8 @@ NETWORK_MODES = {
     "scholarly": AGENT_INSTALL_HOSTS + SCHOLARLY_HOSTS,
 }
 
+PAPER_RUN_AGENT = "paper_review_harbor.agents.paper_run:PaperRun"
+
 
 def _host_args(hosts: tuple[str, ...]) -> list[str]:
     """Allow each host at both phases.
@@ -337,6 +339,16 @@ def verify(
         list[str] | None,
         typer.Option(help="env var name to pass to the agent, e.g. OPENAI_API_KEY"),
     ] = None,
+    variant: Annotated[str, typer.Option(help="paper-run reasoning variant")] = "",
+    timeout_multiplier: Annotated[
+        int, typer.Option(help="Harbor agent timeout multiplier")
+    ] = 1,
+    setup_timeout_multiplier: Annotated[
+        int, typer.Option(help="Harbor installed-agent setup timeout multiplier")
+    ] = 1,
+    no_delete: Annotated[
+        bool, typer.Option(help="keep the Harbor container and workspace after the run")
+    ] = False,
 ) -> None:
     """Run a task under Harbor, or print the command for a machine that can."""
     task_dir = tasks / DATASET_NAME / label
@@ -358,10 +370,25 @@ def verify(
         )
         raise typer.Exit(2)
 
-    command = ["harbor", "run", "-p", str(task_dir), "-a", agent]
+    harbor_agent = PAPER_RUN_AGENT if agent == "paper-run" else agent
+    command = ["harbor", "run", "-p", str(task_dir), "-a", harbor_agent]
     if model:
         command += ["-m", model]
+    if agent == "paper-run" and variant:
+        command += ["--agent-kwarg", f"variant={variant}"]
+    if agent == "paper-run" and timeout_multiplier != 1:
+        if timeout_multiplier < 1:
+            _err("--timeout-multiplier must be at least 1")
+            raise typer.Exit(2)
+        command += ["--agent-timeout-multiplier", str(timeout_multiplier)]
+    if agent == "paper-run" and setup_timeout_multiplier != 1:
+        if setup_timeout_multiplier < 1:
+            _err("--setup-timeout-multiplier must be at least 1")
+            raise typer.Exit(2)
+        command += ["--agent-setup-timeout-multiplier", str(setup_timeout_multiplier)]
     command += ["-y"]
+    if no_delete:
+        command += ["--no-delete"]
     printable_command = command.copy()
     for name in agent_env or []:
         if not ENVIRONMENT_NAME_RE.fullmatch(name):
