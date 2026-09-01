@@ -42,3 +42,7 @@ __pycache__/
 *.egg-info/
 
 # Optional per-paper metadata overrides; specs/ is committable when populated
+
+# Raw transfer artifacts (e.g. group-shared review-test zips) are kept locally
+# but never committed or published
+/papers/.incoming/
