@@ -21,6 +21,7 @@ from one task.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import shutil
 import stat
@@ -153,6 +154,16 @@ def _write(path: Path, text: str, *, executable: bool = False) -> None:
         path.chmod(path.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
 
 
+def _protocol_tree_digest(root: Path) -> str:
+    digest = hashlib.sha256()
+    for path in sorted(p for p in root.rglob("*") if p.is_file()):
+        digest.update(path.relative_to(root).as_posix().encode())
+        digest.update(b"\0")
+        digest.update(path.read_bytes())
+        digest.update(b"\0")
+    return digest.hexdigest()
+
+
 def emit_task(result: IngestResult, spec: TaskSpec, config: EmitConfig) -> Path:
     """Render one Harbor task from a staged paper version."""
     task_id = result.label
@@ -227,6 +238,15 @@ def emit_task(result: IngestResult, spec: TaskSpec, config: EmitConfig) -> Path:
                 "task_id": task_id,
                 "review_path": "review.md",
                 "min_review_chars": config.min_review_chars,
+                "paper_run_required_headings": [
+                    "## Review summary",
+                    "## Blocker findings",
+                    "## Major findings",
+                    "## Minor findings",
+                    "## Sound as written",
+                    "## Not assessable",
+                ],
+                "paper_run_task_source_digest": _protocol_tree_digest(result.root),
             },
             indent=2,
         )

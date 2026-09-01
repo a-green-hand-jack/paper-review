@@ -187,6 +187,60 @@ harbor run --repo https://huggingface.co/datasets/Jack-Jieke-Wu/Paper-Reviewing-
 `/paper2task <label>` runs stage → inspect → emit → audit and reports the box
 commands. `/verify-task <label>` runs the oracle and the floor.
 
+### paper-run v0.5.0 review agent
+
+This benchmark also provides a separate Harbor installed-agent integration for
+the OpenCode-native [`paper-run`](https://github.com/a-green-hand-jack/paper-run)
+v0.5.0 review workflow. It is not the older 13-stage paper-writing `start`
+integration: the wrapper prepares an isolated external-repository source, runs
+the upstream `review-report` plan, and exports
+`.paper-run/review-findings.md` as `/workspace/submission/review.md`.
+The benchmark instruction is appended to the generated `PAPER.md` context with
+the output path normalized to the upstream report location.
+
+The wrapper is registered by import path and verifies the annotated v0.5.0 tag
+against commit `9925848adf195e68d3f3e3039959f9f2c19fb7a3` before building it:
+
+```text
+paper_review_harbor.agents.paper_run:PaperRun
+```
+
+The v0.5.0 GitHub release currently has no tarball/checksum assets, so its
+versioned `install.sh` cannot complete. The wrapper therefore performs a pinned
+source build without patching upstream code. Switch back to the official
+installer after those release assets are published.
+The tag's `src/version.ts` currently reports the stale CLI version `0.2.0`; the
+wrapper validates the tag commit and `package.json` version `0.5.0` instead,
+while preserving the CLI output in the run log.
+The wrapper also removes only the trailing newline from `review-source.json`:
+v0.5.0 compares execa's newline-stripped `git show` output with the raw file,
+which otherwise makes every report-only checkpoint fail as a false mutation.
+
+Run it on Ubuntu with Harbor and Docker:
+
+```bash
+uv run pre-harbor verify erdos973--v1 \
+  --agent paper-run \
+  --model openai/gpt-5.6-sol \
+  --variant medium \
+  --timeout-multiplier 4 \
+  --setup-timeout-multiplier 4 \
+  --network scholarly \
+  --api-host api.apexin.ai \
+  --agent-env OPENAI_API_KEY \
+  --agent-env OPENAI_BASE_URL \
+  --no-delete
+```
+
+`--no-delete` is recommended while debugging. The wrapper keeps the source
+repository digest and imported `paper/` digest, verifies the fixed
+`review-report` plan contains no `revision`, checks the required report
+headings, and archives `review-source.json`, `run.json`, stage history and
+other `.paper-run/` state under `/logs/agent/paper-run/`. Secrets are passed
+through Harbor environment templates and are never written to configuration or
+artifacts. The generic `oracle`/`nop` checks remain unchanged; paper-run's
+structured contract is an additional protocol-specific check.
+
 ---
 
 ## Network: the part that surprises people
