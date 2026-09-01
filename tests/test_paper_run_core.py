@@ -50,6 +50,7 @@ def test_instruction_context_uses_paper_run_checkpoint() -> None:
     assert "PAPER.md" in command
     assert "paper-run checkpoint" in command
     assert "git commit" not in command
+    assert "python3 .agents/tools/paper-init.py status" in command
 
 
 def test_provider_config_does_not_embed_credentials() -> None:

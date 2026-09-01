@@ -142,12 +142,21 @@ def review_prepare_command(model: str | None, variant: str | None) -> str:
 
 def inject_instruction_command() -> str:
     """Add benchmark scope and record it as a paper-run checkpoint."""
+    permission_script = (
+        "import json, pathlib; "
+        f"p=pathlib.Path({json.dumps(REVIEW_DIR + '/opencode.json')}); "
+        "c=json.loads(p.read_text()); "
+        "b=c.setdefault('permission',{}).setdefault('bash',{}); "
+        "b['python3 .agents/tools/paper-init.py status']='allow'; "
+        "p.write_text(json.dumps(c,indent=2)+'\\n')"
+    )
     return (
         f"printf '\\n## Benchmark review requirements\\n\\n' >> "
         f"{_q(REVIEW_DIR + '/PAPER.md')} && "
         "sed 's#/workspace/submission/review.md#.paper-run/review-findings.md#g' "
         f"{_q(TASK_INSTRUCTION)} >> {_q(REVIEW_DIR + '/PAPER.md')} && "
-        f"cd {_q(REVIEW_DIR)} && git add PAPER.md && "
+        f"python3 -c {_q(permission_script)} && "
+        f"cd {_q(REVIEW_DIR)} && git add PAPER.md opencode.json && "
         + _nvm("paper-run checkpoint")
     )
 
