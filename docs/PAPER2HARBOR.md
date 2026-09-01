@@ -19,6 +19,34 @@ Corpus today: **23 papers, 27 reviewable versions**, all published at
 This replaces the ad-hoc baseline harness in `tools/` (see
 [`OSP_BATCH.md`](OSP_BATCH.md)).
 
+## Storage and execution
+
+The durable, runnable distribution is the Hugging Face dataset under
+`paper-review-exam/<task-id>/`. Harbor can run that published snapshot directly
+with `--repo`; it is the right choice for reproducing a released task.
+
+`build/` and `tasks/paper-review-exam/<task-id>/` are local, gitignored build
+products. `pre-harbor emit` recreates them from `papers/`, so use them when
+iterating on the task pipeline. Each generated task embeds only its sanitized
+manuscript material under `environment/paper`; `pre-harbor publish` uploads the
+generated task tree, not the complete local `papers/` corpus. The Hugging Face
+repository may separately carry an archival `papers/` tree, but that is outside
+the runnable `paper-review-exam/` task subtree.
+
+Run Harbor only from a Docker-capable Linux checkout. First confirm the host,
+then build or run the intended task:
+
+```bash
+cd <paper-review-checkout>
+uv run pre-harbor doctor
+uv run pre-harbor emit erdos973--v1
+uv run pre-harbor verify erdos973--v1 --agent oracle
+```
+
+Use `pre-harbor verify` for local generated tasks. To run the published
+snapshot without generating it locally, use the `harbor run --repo` command in
+[Publish](#publish).
+
 ---
 
 ## How to use it
@@ -115,8 +143,9 @@ pre-harbor verify <label> \
 `--agent-env` takes variable *names*. `pre-harbor` passes Harbor v0.20.0 the
 literal template `NAME=${NAME}`; Harbor resolves it from its own environment.
 The printed command uses `'NAME=${NAME}'`, so a shell does not expand a secret
-before Harbor receives the template. Source the credentials first — `set -a;
-source ~/dev/paperbench-harbor/.env; set +a`.
+before Harbor receives the template. Export the required credentials from the
+host's protected credential store before running the command; never place them
+in this repository, a task, or shell history.
 
 Off this machine, the same command prints what to run on the box and exits
 non-zero rather than pretending. Measured on `erdos973--v1`: codex produced a
@@ -157,6 +186,60 @@ harbor run --repo https://huggingface.co/datasets/Jack-Jieke-Wu/Paper-Reviewing-
 
 `/paper2task <label>` runs stage → inspect → emit → audit and reports the box
 commands. `/verify-task <label>` runs the oracle and the floor.
+
+### paper-run v0.5.0 review agent
+
+This benchmark also provides a separate Harbor installed-agent integration for
+the OpenCode-native [`paper-run`](https://github.com/a-green-hand-jack/paper-run)
+v0.5.0 review workflow. It is not the older 13-stage paper-writing `start`
+integration: the wrapper prepares an isolated external-repository source, runs
+the upstream `review-report` plan, and exports
+`.paper-run/review-findings.md` as `/workspace/submission/review.md`.
+The benchmark instruction is appended to the generated `PAPER.md` context with
+the output path normalized to the upstream report location.
+
+The wrapper is registered by import path and verifies the annotated v0.5.0 tag
+against commit `9925848adf195e68d3f3e3039959f9f2c19fb7a3` before building it:
+
+```text
+paper_review_harbor.agents.paper_run:PaperRun
+```
+
+The v0.5.0 GitHub release currently has no tarball/checksum assets, so its
+versioned `install.sh` cannot complete. The wrapper therefore performs a pinned
+source build without patching upstream code. Switch back to the official
+installer after those release assets are published.
+The tag's `src/version.ts` currently reports the stale CLI version `0.2.0`; the
+wrapper validates the tag commit and `package.json` version `0.5.0` instead,
+while preserving the CLI output in the run log.
+The wrapper also removes only the trailing newline from `review-source.json`:
+v0.5.0 compares execa's newline-stripped `git show` output with the raw file,
+which otherwise makes every report-only checkpoint fail as a false mutation.
+
+Run it on Ubuntu with Harbor and Docker:
+
+```bash
+uv run pre-harbor verify erdos973--v1 \
+  --agent paper-run \
+  --model openai/gpt-5.6-sol \
+  --variant medium \
+  --timeout-multiplier 4 \
+  --setup-timeout-multiplier 4 \
+  --network scholarly \
+  --api-host api.apexin.ai \
+  --agent-env OPENAI_API_KEY \
+  --agent-env OPENAI_BASE_URL \
+  --no-delete
+```
+
+`--no-delete` is recommended while debugging. The wrapper keeps the source
+repository digest and imported `paper/` digest, verifies the fixed
+`review-report` plan contains no `revision`, checks the required report
+headings, and archives `review-source.json`, `run.json`, stage history and
+other `.paper-run/` state under `/logs/agent/paper-run/`. Secrets are passed
+through Harbor environment templates and are never written to configuration or
+artifacts. The generic `oracle`/`nop` checks remain unchanged; paper-run's
+structured contract is an additional protocol-specific check.
 
 ---
 
@@ -304,8 +387,9 @@ Ingest, emit, audit and publish run anywhere. Building images and running
 it; commands that need it and cannot find it print the exact invocation for the
 box and exit non-zero rather than substituting a weaker check.
 
-**`harbor run` happens on the Ubuntu box, driven by codex.** The checkout is at
-`~/dev/paper-review` (ssh host `ubuntu-box`), which has docker, harbor, codex and
-uv. Driving it over ssh works for the deterministic setup, but a failed Harbor
-run needs someone to read the build log and the verifier output and decide what
+**`harbor run` happens on a Docker-capable Linux execution host, driven by
+Codex.** Use the checkout path verified on that host rather than assuming a
+machine-specific location. Driving it over SSH works for deterministic setup,
+but a failed Harbor run needs someone to read the build log and the verifier
+output and decide what
 broke — which is what the agent is there for.

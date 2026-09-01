@@ -85,6 +85,11 @@ class TestEmit:
         assert data["environment"]["network_mode"] == "no-network"
         assert "/workspace/submission" in data["artifacts"]
 
+    def test_emits_paper_run_review_contract(self, emitted) -> None:
+        _, task_dir = emitted
+        contract = json.loads((task_dir / "tests" / "contract.json").read_text())
+        assert "## Review summary" in contract["paper_run_required_headings"]
+
     def test_canary_is_stable_across_rebuilds(self) -> None:
         assert canary_for("erdos973--v1") == canary_for("erdos973--v1")
 
@@ -404,6 +409,107 @@ class TestChecker:
         assert reward["reward"] == 1.0
         report = json.loads((out / "submission_report.json").read_text(encoding="utf-8"))
         assert report["extra_submission_files"] == ["findings.json"]
+
+    def test_valid_paper_run_contract_scores_one(self, emitted, tmp_path: Path) -> None:
+        _, task_dir = emitted
+        submission = tmp_path / "sub"
+        submission.mkdir()
+        headings = [
+            "## Review summary",
+            "## Blocker findings",
+            "## Major findings",
+            "## Minor findings",
+            "## Sound as written",
+            "## Not assessable",
+        ]
+        (submission / "review.md").write_text(
+            "\n\n".join(f"{heading}\n{'x' * 50}" for heading in headings), encoding="utf-8"
+        )
+        (submission / "paper-run.json").write_text(
+            json.dumps(
+                {
+                    "schema_version": "paper-review-paper-run-v1",
+                    "paper_run_version": "0.5.0",
+                    "plan": {
+                        "profile": "review-report",
+                        "stages": ["bootstrap", "independent_review"],
+                    },
+                    "source_integrity": True,
+                    "imported_paper_integrity": True,
+                    "source_digest_before": "abc",
+                    "source_digest_after": "abc",
+                    "imported_paper_digest": "sha256:abc",
+                    "review_source": {
+                        "paperDigest": "sha256:abc",
+                        "entrypoint": "main.tex",
+                        "sourceGraph": ["main.tex"],
+                    },
+                    "task_source_digest": json.loads(
+                        (task_dir / "tests" / "contract.json").read_text()
+                    )["paper_run_task_source_digest"],
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        reward = run_checker(task_dir, submission, tmp_path / "out")
+        assert reward["reward"] == 1.0
+        assert reward["paper_run_contract"] == 1.0
+
+    def test_revision_in_paper_run_contract_scores_zero(self, emitted, tmp_path: Path) -> None:
+        _, task_dir = emitted
+        submission = tmp_path / "sub"
+        submission.mkdir()
+        headings = json.loads((task_dir / "tests" / "contract.json").read_text())[
+            "paper_run_required_headings"
+        ]
+        (submission / "review.md").write_text(
+            "\n".join(headings) + "\n" + "x" * 300, encoding="utf-8"
+        )
+        (submission / "paper-run.json").write_text(
+            json.dumps(
+                {
+                    "schema_version": "paper-review-paper-run-v1",
+                    "paper_run_version": "0.5.0",
+                    "plan": {"profile": "review-report", "stages": ["revision"]},
+                    "source_integrity": True,
+                    "imported_paper_integrity": True,
+                    "source_digest_before": "abc",
+                    "source_digest_after": "abc",
+                    "imported_paper_digest": "sha256:abc",
+                    "review_source": {
+                        "paperDigest": "sha256:abc",
+                        "entrypoint": "main.tex",
+                        "sourceGraph": ["main.tex"],
+                    },
+                    "task_source_digest": json.loads(
+                        (task_dir / "tests" / "contract.json").read_text()
+                    )["paper_run_task_source_digest"],
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        reward = run_checker(task_dir, submission, tmp_path / "out")
+        assert reward["reward"] == 0.0
+        assert reward["paper_run_contract"] == 0.0
+
+    def test_malformed_paper_run_contract_writes_report(self, emitted, tmp_path: Path) -> None:
+        _, task_dir = emitted
+        submission = tmp_path / "sub"
+        submission.mkdir()
+        (submission / "review.md").write_text("x" * 500, encoding="utf-8")
+        (submission / "paper-run.json").write_text(
+            json.dumps({"plan": [], "review_source": None}), encoding="utf-8"
+        )
+        out = tmp_path / "out"
+
+        reward = run_checker(task_dir, submission, out)
+
+        assert reward["reward"] == 0.0
+        assert reward["paper_run_contract"] == 0.0
+        report = json.loads((out / "submission_report.json").read_text(encoding="utf-8"))
+        assert report["status"] == "invalid_paper_run_contract"
 
 
 class TestRealCorpus:

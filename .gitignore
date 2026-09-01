@@ -7,7 +7,10 @@
 # API keys (never commit)
 .env
 
-# Local agent configuration and runtime state
+# Local agent configuration and runtime state. Open ScholarPeer installs and
+# manages the marked block in AGENTS.md, while preserving text outside it. This
+# repository intentionally ignores the complete project-local file, so custom
+# AGENTS.md additions are local-only; do not expect them to synchronize via Git.
 .claude/
 .mcp.json
 AGENTS.md
