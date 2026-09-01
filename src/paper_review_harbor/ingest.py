@@ -43,6 +43,7 @@ INPUT_RE = re.compile(r"\\(?:input|include|subfile)\s*\{([^}]+)\}")
 GRAPHICS_RE = re.compile(r"\\includegraphics\s*(?:\[[^]]*\])?\s*\{([^}]+)\}")
 BIBLIOGRAPHY_RE = re.compile(r"\\bibliography\s*\{([^}]+)\}")
 ADDBIBRESOURCE_RE = re.compile(r"\\addbibresource\s*(?:\[[^]]*\])?\s*\{([^}]+)\}")
+INCLUDEPDF_RE = re.compile(r"\\includepdf\s*(?:\[[^]]*\])?\s*\{([^}]+)\}")
 SECTION_RE = re.compile(
     r"\\(section|subsection|subsubsection|paragraph)\*?\s*\{((?:[^{}]|\{[^{}]*\})*)\}"
 )
@@ -580,6 +581,16 @@ def missing_tex_dependencies(root: Path, main: str) -> list[str]:
                 path.name == candidate.name for path in root.rglob(candidate.name)
             ):
                 missing.add(f"{tex_path.relative_to(root)}: missing figure {raw!r}")
+        for raw in INCLUDEPDF_RE.findall(text):
+            if "\\" in raw:
+                continue
+            candidate = tex_path.parent / raw.strip()
+            if candidate.suffix.lower() != ".pdf":
+                candidate = candidate.with_suffix(".pdf")
+            if not candidate.is_file() and not any(
+                path.name == candidate.name for path in root.rglob(candidate.name)
+            ):
+                missing.add(f"{tex_path.relative_to(root)}: missing supplemental PDF {raw!r}")
         bibliography = [
             name.strip()
             for raw in BIBLIOGRAPHY_RE.findall(text)

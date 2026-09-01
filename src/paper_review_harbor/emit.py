@@ -214,21 +214,24 @@ def emit_task(result: IngestResult, spec: TaskSpec, config: EmitConfig) -> Path:
         "path": Path(result.source_path).name,
         "sha256": result.source_sha256,
     }
-    (task_dir / "material-manifest.json").write_text(
-        json.dumps(
-            material_manifest(
-                task_dir / "environment" / "paper",
-                source=source,
-                main_tex=result.main_tex,
-                manuscript_pdf=result.manuscript_pdf,
-                excluded=result.excluded,
-                sanitised=result.sanitised,
-            ),
-            indent=2,
-        )
-        + "\n",
-        encoding="utf-8",
+    manifest = json.dumps(
+        material_manifest(
+            task_dir / "environment" / "paper",
+            source=source,
+            main_tex=result.main_tex,
+            manuscript_pdf=result.manuscript_pdf,
+            excluded=result.excluded,
+            sanitised=result.sanitised,
+        ),
+        indent=2,
+    ) + "\n"
+    # The task-root copy is audited before publish. The environment copy is
+    # checked during Docker build after Harbor has fetched the remote revision.
+    (task_dir / "material-manifest.json").write_text(manifest, encoding="utf-8")
+    (task_dir / "environment" / "material-manifest.json").write_text(
+        manifest, encoding="utf-8"
     )
+    shutil.copy2(TEMPLATES / "validate_materials.py", task_dir / "environment")
 
     _write(
         task_dir / "solution" / "solve.sh",

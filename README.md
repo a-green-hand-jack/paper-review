@@ -43,6 +43,7 @@ pre-harbor emit [labels...]     render tasks; audits each, deletes on leak
 pre-harbor audit                re-audit tasks on disk
 pre-harbor verify <label>       harbor run, or the command for a box with Docker
 pre-harbor publish --repo O/N   push to Hugging Face; dry run without --execute
+pre-harbor benchmark            run/archive one six-task Issue #19 model condition
 ```
 
 ## 文档导航
@@ -60,7 +61,7 @@ pre-harbor publish --repo O/N   push to Hugging Face; dry run without --execute
 
 | 位置 | 角色 | 内容 | 访问 |
 |---|---|---|---|
-| `a-green-hand-jack/paper-review` (GitHub) | 源码与语料库 | 本项目代码、`papers/` 语料、文档；是**唯一**可编辑、可重建的来源 | 公开 |
+| `a-green-hand-jack/paper-review-bench` (GitHub) | 源码与语料库 | 本项目代码、`papers/` 语料、文档；是**唯一**可编辑、可重建的来源 | 公开 |
 | `Jack-Jieke-Wu/Paper-Reviewing-Exam` (HF dataset) | 可运行任务快照 | `pre-harbor publish` 生成的任务树（`paper-review-exam/<task-id>/`），`harbor run --repo` 直接运行；不含语料全量 | 公开 |
 | `Jack-Jieke-Wu/Paper-Reviewing-Exam-Trails` (HF dataset) | review 运行轨迹归档 | OSP/agent 每次运行的 `brain/`、manifest、log（`osp-trails/<paper>/<timestamp>/`） | 公开 |
 

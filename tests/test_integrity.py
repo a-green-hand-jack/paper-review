@@ -54,3 +54,15 @@ def test_ingest_rejects_missing_figure(tmp_path) -> None:
     (paper / "paper.pdf").write_bytes(b"%PDF-1.4")
     with pytest.raises(IngestError, match="missing figure"):
         ingest(discover_paper(paper)[0], tmp_path / "build")
+
+
+def test_ingest_rejects_missing_supplemental_pdf(tmp_path) -> None:
+    paper = tmp_path / "paper"
+    paper.mkdir()
+    (paper / "main.tex").write_text(
+        "\\documentclass{article}\\usepackage{pdfpages}\\begin{document}"
+        "\\includepdf{supplement}\\end{document}"
+    )
+    (paper / "paper.pdf").write_bytes(b"%PDF-1.4")
+    with pytest.raises(IngestError, match="missing supplemental PDF"):
+        ingest(discover_paper(paper)[0], tmp_path / "build")

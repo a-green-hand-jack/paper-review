@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from paper_review_harbor.publish import PublishPlan, upload
+from paper_review_harbor.publish import PublishPlan, PublishResult, upload
 
 
 def test_upload_commands_use_requested_revision(tmp_path: Path, monkeypatch) -> None:
@@ -17,6 +17,8 @@ def test_upload_commands_use_requested_revision(tmp_path: Path, monkeypatch) -> 
         revision="release-v2",
     )
     monkeypatch.setattr("paper_review_harbor.publish.shutil.which", lambda _: "/usr/bin/hf")
-    commands = upload(plan, readme="# card\n")
-    assert commands.count("--revision release-v2") == 2
+    result = upload(plan, readme="# card\n")
+    assert isinstance(result, PublishResult)
+    assert result.commands.count("--revision release-v2") == 2
+    assert result.resolved_revision is None
     assert "/tree/release-v2/paper-review-exam" in plan.harbor_repo_url

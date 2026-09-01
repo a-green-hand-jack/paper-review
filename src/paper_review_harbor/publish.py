@@ -39,6 +39,14 @@ class PublishError(RuntimeError):
 
 
 @dataclass(frozen=True)
+class PublishResult:
+    """Completed upload metadata, including the resolved immutable revision."""
+
+    commands: str
+    resolved_revision: str | None
+
+
+@dataclass(frozen=True)
 class PublishPlan:
     repo_id: str
     dataset: str
@@ -189,7 +197,7 @@ Two paths remain open and are not fixable inside a task:
 
 ## Provenance
 
-Built by [`pre-harbor`](https://github.com/a-green-hand-jack/paper-review) from
+Built by [`pre-harbor`](https://github.com/a-green-hand-jack/paper-review-bench) from
 the LaTeX sources in `papers/`. `dataset-manifest.jsonl` records each task's
 source SHA-256, so a collected review can be traced to the exact bytes it was
 written from.
@@ -213,7 +221,45 @@ def _hf_upload(repo_id: str, source: Path, destination: str, revision: str) -> l
     ]
 
 
-def upload(plan: PublishPlan, *, readme: str | None = None, execute: bool = False) -> str:
+def _resolved_revision(repo_id: str, revision: str) -> str:
+    command = ["hf", "datasets", "info", repo_id, "--revision", revision, "--format", "json"]
+    result = subprocess.run(command, capture_output=True, text=True)
+    if result.returncode:
+        raise PublishError(
+            f"`{' '.join(command)}` failed with {result.returncode}:\n{result.stderr.strip()}"
+        )
+    try:
+        sha = json.loads(result.stdout).get("sha")
+    except json.JSONDecodeError as error:
+        raise PublishError("Hugging Face returned invalid dataset metadata") from error
+    if not isinstance(sha, str) or len(sha) != 40:
+        raise PublishError("Hugging Face did not return an immutable 40-character commit SHA")
+    return sha
+
+
+def create_tag(repo_id: str, tag: str, revision: str) -> None:
+    command = [
+        "hf",
+        "repos",
+        "tag",
+        "create",
+        repo_id,
+        tag,
+        "--revision",
+        revision,
+        "--type",
+        "dataset",
+    ]
+    result = subprocess.run(command, capture_output=True, text=True)
+    if result.returncode:
+        raise PublishError(
+            f"`{' '.join(command)}` failed with {result.returncode}:\n{result.stderr.strip()}"
+        )
+
+
+def upload(
+    plan: PublishPlan, *, readme: str | None = None, execute: bool = False
+) -> PublishResult:
     """Upload the planned dataset. Without `execute`, reports and stops.
 
     Returns the command lines, so a dry run prints exactly what a real one
@@ -229,7 +275,7 @@ def upload(plan: PublishPlan, *, readme: str | None = None, execute: bool = Fals
     printable = "\n".join(" ".join(command) for command in commands)
 
     if not execute:
-        return printable
+        return PublishResult(commands=printable, resolved_revision=None)
 
     if readme is not None:
         staged_readme.write_text(readme, encoding="utf-8")
@@ -243,7 +289,10 @@ def upload(plan: PublishPlan, *, readme: str | None = None, execute: bool = Fals
                 )
     finally:
         staged_readme.unlink(missing_ok=True)
-    return printable
+    return PublishResult(
+        commands=printable,
+        resolved_revision=_resolved_revision(plan.repo_id, plan.revision),
+    )
 
 
 def read_manifest(plan: PublishPlan) -> list[dict]:

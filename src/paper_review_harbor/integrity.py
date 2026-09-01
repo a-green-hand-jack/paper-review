@@ -47,7 +47,9 @@ def file_inventory(root: Path) -> list[dict[str, object]]:
                 "size": len(data),
                 "sha256": sha256_bytes(data),
                 "lfs_pointer": is_lfs_pointer_bytes(data),
-                "lfs_managed": None,
+                # Archive material has no Git index, so LFS tracking itself is
+                # unknowable. Keep that distinct from pointer/hydration state.
+                "lfs_managed": "unknown",
                 "lfs_hydrated": not is_lfs_pointer_bytes(data),
                 "mime_type": mimetypes.guess_type(path.name)[0] or "application/octet-stream",
             }
