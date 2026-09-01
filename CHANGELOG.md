@@ -3,11 +3,11 @@
 All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
-and this project aims to follow Semantic Versioning. No release has been cut
-yet; everything below is accumulated work on `main` described by the feature
-arcs in the git history.
+and this project aims to follow Semantic Versioning.
 
-## [Unreleased]
+## [v0.1.0] - 2026-09-01
+
+First release: everything accumulated on `main` since the initial commit.
 
 ### Added
 
