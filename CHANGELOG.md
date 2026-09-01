@@ -88,10 +88,10 @@ First release: everything accumulated on `main` since the initial commit.
   exported from a protected store and passed as `NAME=${NAME}` templates to
   Harbor; nothing secret is written into the repo, tasks, or shell history.
 - Review-trail Hugging Face dataset renamed from `Jack-Jieke-Wu/osp-trails`
-  to `Jack-Jieke-Wu/Paper-Reviewing-Exam-Trails`; all docs updated and the
-  three-way relationship (GitHub source repo, runnable `Paper-Reviewing-Exam`
-  task snapshot, gated `Paper-Reviewing-Exam-Trails` trail archive) is
-  documented in `README.md`.
+  to `Jack-Jieke-Wu/Paper-Reviewing-Exam-Trails` and made public; all docs
+  updated and the three-way relationship (GitHub source repo, runnable
+  `Paper-Reviewing-Exam` task snapshot, public `Paper-Reviewing-Exam-Trails`
+  trail archive) is documented in `README.md`.
 
 ### Fixed
 

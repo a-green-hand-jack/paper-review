@@ -96,4 +96,4 @@ Open ScholarPeer（OSP）的默认评审标准是照着 ML/NLP/CS 会议评审�
 
 ---
 
-*fork commits: d8780e0 · d2a4827 · trails: Jack-Jieke-Wu/Paper-Reviewing-Exam-Trails (HF, private) · audit doc: docs/DOMAIN_ADAPTIVE_AUDIT.md*
+*fork commits: d8780e0 · d2a4827 · trails: Jack-Jieke-Wu/Paper-Reviewing-Exam-Trails (HF, public since 2026-09-01, was private at audit time) · audit doc: docs/DOMAIN_ADAPTIVE_AUDIT.md*

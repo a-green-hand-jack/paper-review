@@ -112,8 +112,9 @@ because it was the only PDF-only entry at the time, and
 
 The whole corpus is mirrored in the public Hugging Face dataset
 `Jack-Jieke-Wu/osp-benchmark` (same `papers/` layout, 23 papers / 27 version
-runs). Review trails are archived separately in the private
-`Jack-Jieke-Wu/Paper-Reviewing-Exam-Trails` (formerly `Jack-Jieke-Wu/osp-trails`).
+runs). Review trails are archived separately in the public
+`Jack-Jieke-Wu/Paper-Reviewing-Exam-Trails` (public since 2026-09-01; formerly
+the private `Jack-Jieke-Wu/osp-trails`).
 
 When the version PDFs and completed local trails are available, run the
 version comparison against existing trails without rerunning reviews. The
@@ -159,8 +160,9 @@ Every executed run receives a new timestamped trail. The manifest records the
 paper hash, model configuration, command, timestamps, status, and trail
 repository. A local trail is uploaded only when `--upload` is explicitly
 requested; private trails must not be committed to the public GitHub
-repository. The named Hugging Face dataset must already be private because
-Hugging Face's `--private` option only affects creation of a new repository.
+repository. The trail dataset `Jack-Jieke-Wu/Paper-Reviewing-Exam-Trails` is
+public, so uploading publishes review content — confirm that exposure before
+running with `--upload`.
 For `osp_batch.py`, archival requires both `--trail-repo` and `--upload`; a
 non-reuse `osp_compare.py` run uploads the individual version trails and the
 comparison report when `--trail-repo` is supplied. Each manifest records the

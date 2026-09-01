@@ -62,10 +62,10 @@ pre-harbor publish --repo O/N   push to Hugging Face; dry run without --execute
 |---|---|---|---|
 | `a-green-hand-jack/paper-review` (GitHub) | 源码与语料库 | 本项目代码、`papers/` 语料、文档；是**唯一**可编辑、可重建的来源 | 公开 |
 | `Jack-Jieke-Wu/Paper-Reviewing-Exam` (HF dataset) | 可运行任务快照 | `pre-harbor publish` 生成的任务树（`paper-review-exam/<task-id>/`），`harbor run --repo` 直接运行；不含语料全量 | 公开 |
-| `Jack-Jieke-Wu/Paper-Reviewing-Exam-Trails` (HF dataset) | review 运行轨迹归档 | OSP/agent 每次运行的 `brain/`、manifest、log（`osp-trails/<paper>/<timestamp>/`） | 当前 gated，需授权访问 |
+| `Jack-Jieke-Wu/Paper-Reviewing-Exam-Trails` (HF dataset) | review 运行轨迹归档 | OSP/agent 每次运行的 `brain/`、manifest、log（`osp-trails/<paper>/<timestamp>/`） | 公开 |
 
 关系与流：
 
 1. **代码（GitHub）→ 任务（Exam）**：`pre-harbor publish` 把从 `papers/` 生成的 Harbor 任务上传到 Exam；生成的树重新审计后才发布，任务不被「写死」在仓库里，所以 Exam 的快照以它的 git commit/tag 为准。
-2. **运行 → 轨迹（Trails）**：`--trail-repo Jack-Jieke-Wu/Paper-Reviewing-Exam-Trails --upload` 把每次 review 的轨迹归档进 Trails；轨迹含可能机密的审稿内容，所以该数据集要求授权访问，gitignore 保证本地 `osp-trails/` 不进入 GitHub 仓库。
+2. **运行 → 轨迹（Trails）**：`--trail-repo Jack-Jieke-Wu/Paper-Reviewing-Exam-Trails --upload` 把每次 review 的轨迹归档进 Trails；轨迹含审稿内容，是公开数据——**发布前确认你接受这些内容公开**。gitignore 保证本地 `osp-trails/` 不进入 GitHub 仓库。
 3. **版本对应**：GitHub 的 `v0.1.0` 是代码版本；Exam 与 Trails 各自是独立数据集，内容随各自 upload 更新，不随 GitHub tag 自动同步。三处都已打 `v0.1.0` tag 标记同一 benchmark 的第一代快照（见 `CHANGELOG.md`）。

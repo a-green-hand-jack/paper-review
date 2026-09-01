@@ -33,12 +33,13 @@ osp-trails/<paper-name>/<run-timestamp>/
 
 Every executed run gets a new timestamp directory, so rerunning a paper never
 overwrites an older review. `osp-trails/` is gitignored because review content
-may be confidential. A trail is durably archived in the private Hugging Face
-dataset only when `--trail-repo ... --upload` is supplied and the upload
-succeeds. An upload failure makes the runner exit nonzero even if the review
-itself completed. The named dataset must already be private; Hugging Face's
-`--private` option only affects creation of a repository that does not yet
-exist.
+may be confidential. A trail is durably archived in the Hugging Face dataset
+`Jack-Jieke-Wu/Paper-Reviewing-Exam-Trails` (public since 2026-09-01, formerly
+the private `Jack-Jieke-Wu/osp-trails`) only when
+`--trail-repo ... --upload` is supplied and the upload succeeds. An upload
+failure makes the runner exit nonzero even if the review itself completed.
+Uploading a trail publishes review content — confirm you accept that exposure
+before running with `--upload`.
 
 ## Usage
 
@@ -81,9 +82,10 @@ an OpenCode TUI agent can construct exactly the run it wants. The shorthand
 `openai/gpt-5.6-sol` with variant `medium`.
 
 Add `--trail-repo NAMESPACE/DATASET --upload` to upload each completed or
-failed trail to a private Hugging Face dataset. The `workspace/` directory is
-excluded from uploads; only the manifest, log, and copied `brain/` artifacts
-are uploaded.
+failed trail to `Jack-Jieke-Wu/Paper-Reviewing-Exam-Trails`. The dataset is
+public, so a trail upload publishes review content. The `workspace/` directory
+is excluded from uploads; only the manifest, log, and copied `brain/`
+artifacts are uploaded.
 
 ## Notes
 
