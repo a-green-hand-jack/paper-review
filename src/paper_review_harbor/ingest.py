@@ -28,6 +28,7 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
 from .corpus import PaperVersion, declared_manuscript_pdfs
+from .integrity import file_violations, material_violations
 
 #: arXiv ships this alongside the sources; it names the toplevel file.
 ARXIV_README = "00README.json"
@@ -39,6 +40,9 @@ STYLE_SUFFIXES = frozenset({".sty", ".cls", ".bst", ".clo"})
 
 DOCUMENTCLASS_RE = re.compile(r"\\documentclass\s*(\[[^\]]*\])?\s*\{")
 INPUT_RE = re.compile(r"\\(?:input|include|subfile)\s*\{([^}]+)\}")
+GRAPHICS_RE = re.compile(r"\\includegraphics\s*(?:\[[^]]*\])?\s*\{([^}]+)\}")
+BIBLIOGRAPHY_RE = re.compile(r"\\bibliography\s*\{([^}]+)\}")
+ADDBIBRESOURCE_RE = re.compile(r"\\addbibresource\s*(?:\[[^]]*\])?\s*\{([^}]+)\}")
 SECTION_RE = re.compile(
     r"\\(section|subsection|subsubsection|paragraph)\*?\s*\{((?:[^{}]|\{[^{}]*\})*)\}"
 )
@@ -101,6 +105,8 @@ class IngestResult:
     excluded: tuple[str, ...]
     sanitised: tuple[str, ...]
     source_sha256: str
+    source_kind: str
+    source_path: str
 
 
 def sha256_file(path: Path) -> str:
@@ -151,6 +157,15 @@ def _materialise(version: PaperVersion, destination: Path) -> None:
     elif version.source_kind == "texfile":
         destination.mkdir(parents=True, exist_ok=True)
         shutil.copy2(version.source, destination / version.source.name)
+        companion_suffixes = BIB_SUFFIXES | FIGURE_SUFFIXES | STYLE_SUFFIXES | TEX_SUFFIXES
+        for companion in version.source.parent.iterdir():
+            if (
+                companion.is_file()
+                and companion != version.source
+                and companion != version.pdf
+                and companion.suffix.lower() in companion_suffixes
+            ):
+                shutil.copy2(companion, destination / companion.name)
     else:  # pragma: no cover - guarded by corpus.py
         raise IngestError(f"unknown source kind {version.source_kind!r}")
 
@@ -546,6 +561,48 @@ def tex_graph(root: Path, main: str) -> list[Path]:
     return ordered
 
 
+def missing_tex_dependencies(root: Path, main: str) -> list[str]:
+    """Static missing-file checks for literal TeX dependency declarations."""
+    missing: set[str] = set()
+    for tex_path in tex_graph(root, main):
+        text = _read_tex(tex_path)
+        for raw in INPUT_RE.findall(text):
+            if "\\" not in raw and _resolve_input(root, tex_path, raw) is None:
+                missing.add(f"{tex_path.relative_to(root)}: missing TeX input {raw!r}")
+        for raw in GRAPHICS_RE.findall(text):
+            if "\\" in raw:
+                continue
+            candidate = tex_path.parent / raw.strip()
+            choices = [candidate] if candidate.suffix else [
+                candidate.with_suffix(suffix) for suffix in FIGURE_SUFFIXES
+            ]
+            if not any(path.is_file() for path in choices) and not any(
+                path.name == candidate.name for path in root.rglob(candidate.name)
+            ):
+                missing.add(f"{tex_path.relative_to(root)}: missing figure {raw!r}")
+        bibliography = [
+            name.strip()
+            for raw in BIBLIOGRAPHY_RE.findall(text)
+            for name in raw.split(",")
+            if name.strip()
+        ]
+        bibliography += [name.strip() for name in ADDBIBRESOURCE_RE.findall(text)]
+        compiled_bibliography = any(root.rglob("*.bbl"))
+        for raw in bibliography:
+            if "\\" in raw:
+                continue
+            candidate = tex_path.parent / raw
+            if candidate.suffix.lower() not in BIB_SUFFIXES:
+                candidate = candidate.with_suffix(".bib")
+            if (
+                not compiled_bibliography
+                and not candidate.is_file()
+                and not any(path.name == candidate.name for path in root.rglob(candidate.name))
+            ):
+                missing.add(f"{tex_path.relative_to(root)}: missing bibliography {raw!r}")
+    return sorted(missing)
+
+
 def _split_keys(raw: str) -> list[str]:
     return [key.strip() for key in raw.split(",") if key.strip()]
 
@@ -611,8 +668,20 @@ def ingest(version: PaperVersion, build_root: Path) -> IngestResult:
     _flatten_single_dir(root)
     excluded = _strip_private(root, version)
     sanitised = strip_bib_preamble(root)
+    violations = material_violations(root)
+    if version.pdf is not None and version.pdf.is_file():
+        violations.extend(file_violations(version.pdf))
+    if violations:
+        raise IngestError(
+            "invalid paper material:\n" + "\n".join(f"  - {item}" for item in violations)
+        )
 
     main = find_main_tex(root)
+    dependencies = missing_tex_dependencies(root, main)
+    if dependencies:
+        raise IngestError(
+            "missing TeX dependencies:\n" + "\n".join(f"  - {item}" for item in dependencies)
+        )
     manuscript_pdf = stage_sibling_pdf(root, version, main)
     paper_map = build_map(root, version.label, main)
 
@@ -633,4 +702,6 @@ def ingest(version: PaperVersion, build_root: Path) -> IngestResult:
         excluded=tuple(excluded),
         sanitised=tuple(sanitised),
         source_sha256=source_sha,
+        source_kind=version.source_kind,
+        source_path=version.source.as_posix(),
     )

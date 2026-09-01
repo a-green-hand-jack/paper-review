@@ -199,12 +199,14 @@ in training corpora.
 """
 
 
-def _hf_upload(repo_id: str, source: Path, destination: str) -> list[str]:
+def _hf_upload(repo_id: str, source: Path, destination: str, revision: str) -> list[str]:
     return [
         "hf",
         "upload",
         "--repo-type",
         "dataset",
+        "--revision",
+        revision,
         repo_id,
         str(source),
         destination,
@@ -221,9 +223,9 @@ def upload(plan: PublishPlan, *, readme: str | None = None, execute: bool = Fals
         raise PublishError("the `hf` CLI is not on PATH; install huggingface-hub to publish")
 
     staged_readme = plan.local_dir.parent / f".{README_NAME}.staged"
-    commands = [_hf_upload(plan.repo_id, plan.local_dir, plan.dataset)]
+    commands = [_hf_upload(plan.repo_id, plan.local_dir, plan.dataset, plan.revision)]
     if readme is not None:
-        commands.append(_hf_upload(plan.repo_id, staged_readme, README_NAME))
+        commands.append(_hf_upload(plan.repo_id, staged_readme, README_NAME, plan.revision))
     printable = "\n".join(" ".join(command) for command in commands)
 
     if not execute:

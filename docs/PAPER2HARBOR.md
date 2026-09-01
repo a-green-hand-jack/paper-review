@@ -166,6 +166,11 @@ pre-harbor publish --repo Jack-Jieke-Wu/Paper-Reviewing-Exam            # dry ru
 pre-harbor publish --repo Jack-Jieke-Wu/Paper-Reviewing-Exam --execute
 ```
 
+Pass an explicit branch, tag, or commit with `--revision`. The upload command
+uses that revision, and the generated task contains `material-manifest.json`
+with a per-file size, SHA-256, LFS status, and paper tree digest. Formal runs
+should record the resolved HF commit SHA and use that SHA in `harbor run --repo`.
+
 The audit runs again at publish time rather than trusting that `emit` ran it,
 because the tasks on disk may have been touched since, and one contaminated task
 in a published dataset is worse than no dataset — the reviews collected against
