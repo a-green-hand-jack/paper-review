@@ -143,6 +143,23 @@ def review_prepare_command(model: str | None, variant: str | None) -> str:
     return _nvm(" ".join(parts))
 
 
+def configure_review_profile_command() -> str:
+    """Replace canonical build metadata with a valid external-paper profile."""
+    profile = {
+        "schema_version": "paper-build-profile-v1",
+        "layout": "external-latex",
+        "source_root": "paper",
+        "entrypoint": "paper/main.tex",
+        "bibliography": "paper/refs.bib",
+        "builds": [{"name": "review", "command": ["true"], "output": None}],
+    }
+    payload = json.dumps(profile, indent=2)
+    return (
+        f"printf '%s\\n' {_q(payload)} > {_q(REVIEW_DIR + '/.agents/paper-build.json')} && "
+        f"cd {_q(REVIEW_DIR)} && git add -f .agents/paper-build.json"
+    )
+
+
 def inject_instruction_command() -> str:
     """Add benchmark scope and record it as a paper-run checkpoint."""
     permission_script = (

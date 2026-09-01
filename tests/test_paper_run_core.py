@@ -53,6 +53,13 @@ def test_instruction_context_uses_paper_run_checkpoint() -> None:
     assert "python3 .agents/tools/paper-init.py status" in command
 
 
+def test_external_review_profile_is_not_canonical_variants() -> None:
+    command = core.configure_review_profile_command()
+    assert ".agents/paper-build.json" in command
+    assert "external-latex" in command
+    assert "git add -f" in command
+
+
 def test_provider_config_does_not_embed_credentials() -> None:
     command = core.provider_config_command(
         "https://api.example.test/v1", "openai/gpt-5.6-sol"
