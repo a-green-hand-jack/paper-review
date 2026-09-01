@@ -144,7 +144,7 @@ def review_prepare_command(model: str | None, variant: str | None) -> str:
 
 
 def configure_review_profile_command() -> str:
-    """Replace canonical build metadata with a valid external-paper profile."""
+    """Set external-paper metadata and normalize a v0.5.0 manifest bug."""
     profile = {
         "schema_version": "paper-build-profile-v1",
         "layout": "external-latex",
@@ -154,9 +154,15 @@ def configure_review_profile_command() -> str:
         "builds": [{"name": "review", "command": ["true"], "output": None}],
     }
     payload = json.dumps(profile, indent=2)
+    normalize = (
+        "from pathlib import Path; "
+        f"p=Path({REVIEW_DIR + '/.paper-run/review-source.json'!r}); "
+        "p.write_text(p.read_text().rstrip('\\n'))"
+    )
     return (
         f"printf '%s\\n' {_q(payload)} > {_q(REVIEW_DIR + '/.agents/paper-build.json')} && "
-        f"cd {_q(REVIEW_DIR)} && git add -f .agents/paper-build.json"
+        f"python3 -c {_q(normalize)} && cd {_q(REVIEW_DIR)} && "
+        "git add -f .agents/paper-build.json .paper-run/review-source.json"
     )
 
 

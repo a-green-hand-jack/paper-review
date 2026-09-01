@@ -183,6 +183,9 @@ installer after those release assets are published.
 The tag's `src/version.ts` currently reports the stale CLI version `0.2.0`; the
 wrapper validates the tag commit and `package.json` version `0.5.0` instead,
 while preserving the CLI output in the run log.
+The wrapper also removes only the trailing newline from `review-source.json`:
+v0.5.0 compares execa's newline-stripped `git show` output with the raw file,
+which otherwise makes every report-only checkpoint fail as a false mutation.
 
 Run it on Ubuntu with Harbor and Docker:
 

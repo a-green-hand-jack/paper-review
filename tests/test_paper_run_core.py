@@ -57,6 +57,8 @@ def test_external_review_profile_is_not_canonical_variants() -> None:
     command = core.configure_review_profile_command()
     assert ".agents/paper-build.json" in command
     assert "external-latex" in command
+    assert "review-source.json" in command
+    assert "rstrip" in command
     assert "git add -f" in command
 
 
