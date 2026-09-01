@@ -70,8 +70,15 @@ def main() -> int:
     if protocol_path.is_file():
         try:
             protocol = json.loads(protocol_path.read_text(encoding="utf-8"))
+            if not isinstance(protocol, dict):
+                raise TypeError("paper-run protocol must be an object")
             plan = protocol.get("plan", {})
+            review_source = protocol.get("review_source", {})
+            if not isinstance(plan, dict) or not isinstance(review_source, dict):
+                raise TypeError("paper-run plan and review source must be objects")
             stages = plan.get("stages", [])
+            if not isinstance(stages, list):
+                raise TypeError("paper-run stages must be a list")
             missing_headings = [
                 heading for heading in contract.get("paper_run_required_headings", [])
                 if heading not in body
@@ -86,10 +93,10 @@ def main() -> int:
                 and protocol.get("source_digest_before")
                 == protocol.get("source_digest_after")
                 and str(protocol.get("imported_paper_digest", "")).startswith("sha256:")
-                and protocol.get("review_source", {}).get("paperDigest")
+                and review_source.get("paperDigest")
                 == protocol.get("imported_paper_digest")
-                and protocol.get("review_source", {}).get("entrypoint")
-                and protocol.get("review_source", {}).get("sourceGraph")
+                and review_source.get("entrypoint")
+                and review_source.get("sourceGraph")
                 and protocol.get("task_source_digest")
                 == contract.get("paper_run_task_source_digest")
                 and not missing_headings

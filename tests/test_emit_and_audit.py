@@ -494,6 +494,23 @@ class TestChecker:
         assert reward["reward"] == 0.0
         assert reward["paper_run_contract"] == 0.0
 
+    def test_malformed_paper_run_contract_writes_report(self, emitted, tmp_path: Path) -> None:
+        _, task_dir = emitted
+        submission = tmp_path / "sub"
+        submission.mkdir()
+        (submission / "review.md").write_text("x" * 500, encoding="utf-8")
+        (submission / "paper-run.json").write_text(
+            json.dumps({"plan": [], "review_source": None}), encoding="utf-8"
+        )
+        out = tmp_path / "out"
+
+        reward = run_checker(task_dir, submission, out)
+
+        assert reward["reward"] == 0.0
+        assert reward["paper_run_contract"] == 0.0
+        report = json.loads((out / "submission_report.json").read_text(encoding="utf-8"))
+        assert report["status"] == "invalid_paper_run_contract"
+
 
 class TestRealCorpus:
     def test_every_emitted_manifest_parses(self, real_papers: Path, tmp_path: Path) -> None:

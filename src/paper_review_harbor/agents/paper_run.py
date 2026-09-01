@@ -77,9 +77,6 @@ class PaperRun(BaseInstalledAgent):
             environment, command=core.inject_instruction_command(), timeout_sec=120
         )
         await self.exec_as_agent(
-            environment, command=core.inject_instruction_command(), timeout_sec=60
-        )
-        await self.exec_as_agent(
             environment,
             command=core.review_start_command(model, self._variant()),
             timeout_sec=core.REVIEW_TIMEOUT_SEC,

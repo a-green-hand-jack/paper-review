@@ -107,3 +107,21 @@ def test_verify_expands_paper_run_alias_and_agent_options(tmp_path: Path, monkey
     assert "--agent-timeout-multiplier" in command
     assert "--agent-setup-timeout-multiplier" in command
     assert "--no-delete" in command
+
+
+def test_verify_shell_quotes_variant_in_printed_command(tmp_path: Path, monkeypatch) -> None:
+    label = "example"
+    tasks = tmp_path / "tasks"
+    _task(tasks, label)
+    monkeypatch.setattr(cli.shutil, "which", lambda _: None)
+
+    result = CliRunner().invoke(
+        cli.app,
+        [
+            "verify", label, "--tasks", str(tasks), "--agent", "paper-run",
+            "--variant", "$(touch /tmp/unsafe)", "--network", "agent",
+        ],
+    )
+
+    assert result.exit_code == 3
+    assert "'variant=$(touch /tmp/unsafe)'" in result.output

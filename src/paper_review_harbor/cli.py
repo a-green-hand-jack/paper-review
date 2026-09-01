@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 import re
+import shlex
 import shutil
 import subprocess
 from pathlib import Path
@@ -395,10 +396,10 @@ def verify(
             _err(f"invalid agent environment variable name {name!r}")
             raise typer.Exit(2)
         command += ["--agent-env", f"{name}=${{{name}}}"]
-        printable_command += ["--agent-env", f"'{name}=${{{name}}}'"]
+        printable_command += ["--agent-env", f"{name}=${{{name}}}"]
     command += _host_args(hosts)
     printable_command += _host_args(hosts)
-    printable = " ".join(printable_command)
+    printable = shlex.join(printable_command)
 
     if not shutil.which("harbor") or not shutil.which("docker"):
         typer.echo(
