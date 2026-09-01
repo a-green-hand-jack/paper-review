@@ -38,9 +38,6 @@ testpaths = ["tests"]
 [tool.ruff]
 line-length = 100
 target-version = "py311"
-# tools/ is the retiring OSP baseline harness (see docs/OSP_BATCH.md); it is
-# not held to this project's lint rules while it waits to be deleted.
-exclude = ["tools"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]

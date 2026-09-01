@@ -117,6 +117,8 @@ def render_readme(plan: PublishPlan, manifest_rows: list[dict]) -> str:
     """A dataset card that says what these tasks are and are not."""
     domains = sorted({row.get("domain", "unknown") for row in manifest_rows})
     slugs = sorted({row.get("paper_slug", "") for row in manifest_rows})
+    declared_domains = [d for d in domains if d not in ("", "unknown")]
+    fields = ", ".join(declared_domains) if declared_domains else "not declared (specs/<slug>.yaml is optional)"
     return f"""---
 license: mit
 task_categories:
@@ -140,7 +142,7 @@ judge, because deciding what counts as a good review is the judgement the human
 experts are for.
 
 - **{len(plan.task_ids)} tasks** from {len(slugs)} papers
-- Fields: {", ".join(domains)}
+- Fields: {fields}
 - Each version of a paper is an independent task: a later version fixes the
   earlier one's problems, so a review of one is not a review of the other.
 
@@ -165,6 +167,15 @@ open-book runs:
 **Whether a run had network access is a property of the invocation, not of the
 task.** Record it alongside the review, or a later reader cannot tell whether
 an agent that checked no citations was unable to or merely did not.
+
+## Running the benchmark
+
+To run one reproducible model condition over the six-task Issue #19 set and
+archive every trail, use `pre-harbor benchmark` from the
+[`paper-review-bench`](https://github.com/a-green-hand-jack/paper-review-bench)
+repository (see its `docs/BENCHMARK.md`). Trails land in the
+[`Paper-Reviewing-Exam-Trails`](https://huggingface.co/datasets/Jack-Jieke-Wu/Paper-Reviewing-Exam-Trails)
+dataset.
 
 ## Layout
 

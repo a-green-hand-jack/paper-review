@@ -5,6 +5,42 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project aims to follow Semantic Versioning.
 
+## [Unreleased]
+
+### Removed
+
+- Retiring OSP baseline harness and its documentation: `tools/osp_batch.py`,
+  `tools/osp_compare.py`, `docs/OSP_BATCH.md`, `docs/OSP_FORK_WORKFLOW.md`,
+  `docs/STATUS_REPORT.md`, `docs/DOMAIN_ADAPTIVE_AUDIT.md`,
+  `docs/DOMAIN_PROFILE_DESIGN.md`, `docs/ARTIFACT_CONTRACTS.md`. The Harbor
+  benchmark has completed a full Issue #19 round, so the legacy path is gone
+  entirely; provenance lives on in each paper's `info.md`.
+- Chinese corpus collection memos (`papers/README_2026-08-31.md`,
+  `papers/README_2026-09-01.md`); their data is preserved in each paper's
+  `info.md`.
+
+### Added
+
+- `docs/BENCHMARK.md` — the reproducible `pre-harbor benchmark` model-condition
+  guide: prerequisites, parameter contract, output layout, trail-manifest
+  schema, result interpretation, and noise-aware comparison.
+- First dataset card for `Jack-Jieke-Wu/Paper-Reviewing-Exam-Trails`
+  (source kept in `docs/dataset-cards/Paper-Reviewing-Exam-Trails.md`).
+- All three locations (GitHub repo, `Paper-Reviewing-Exam`,
+  `Paper-Reviewing-Exam-Trails`) now link to each other.
+
+### Changed
+
+- All documentation is now English-only.
+- `README.md` rewritten in English: three-location relationship table,
+  benchmark entry, document navigation; legacy harness references removed.
+- `docs/PAPER2HARBOR.md` gained a **Benchmark** section and links
+  `BENCHMARK.md`.
+- `src/paper_review_harbor/publish.py` dataset card: fixed the GitHub link,
+  added a benchmark section and cross-links to the Trails dataset, and reports
+  "not declared" instead of "unknown" for unset fields.
+- `.gitignore` and code comments no longer reference removed docs or tools.
+
 ## [v0.1.0] - 2026-09-01
 
 First release: everything accumulated on `main` since the initial commit.

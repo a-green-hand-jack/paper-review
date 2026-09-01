@@ -2,8 +2,7 @@
 
 Harbor datasets are directories, so the manifest is what lets a collected
 review be traced back to a paper version and the exact bytes it was written
-from. `tools/osp_batch.py` kept the same provenance per run; this is written
-once, at build time, and travels with the dataset.
+from. It is written once, at build time, and travels with the dataset.
 
 What it deliberately does not record is whether a run had network access. That
 is a property of the `harbor run` invocation, not of the task, and belongs in

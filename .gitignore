@@ -15,10 +15,10 @@
 .mcp.json
 AGENTS.md
 
-# .opencode/ is where the Open ScholarPeer installer drops generated artifacts
-# (see docs/OSP_FORK_WORKFLOW.md), so it stays ignored by default. The
-# paper2task workflow is different: it is source, maintained here, and has to
-# sit in .opencode/ because that is the only place opencode looks.
+# .opencode/ is where the Open ScholarPeer installer drops generated artifacts,
+# so it stays ignored by default. The paper2task workflow is different: it is
+# source, maintained here, and has to sit in .opencode/ because that is the
+# only place opencode looks.
 .opencode/*
 !.opencode/command/
 !.opencode/agent/

@@ -7,9 +7,9 @@ ENV DEBIAN_FRONTEND=noninteractive
 # will need has to arrive here.
 #
 # poppler-utils earns its place: reviewing a PDF means rasterising pages to look
-# at figures, and the previous harness lost six runs in ten to a missing scratch
-# path for exactly that (see tools/osp_batch.py). A recommended-plus-science TeX
-# set compiles every manuscript in this corpus without pulling texlive-full.
+# at figures, and a missing scratch path for exactly that once silently lost
+# runs. A recommended-plus-science TeX set compiles every manuscript in this
+# corpus without pulling texlive-full.
 #
 # curl, ripgrep, nodejs and npm are here for the agent rather than the paper.
 # Harbor installs agents at run time, and every adapter's install step begins by

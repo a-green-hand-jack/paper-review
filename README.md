@@ -1,37 +1,41 @@
 # paper-review-harbor
 
-把论文变成标准的 [Harbor](https://www.harborframework.com/docs/tasks) 任务，用于**收集**同行评审：
-稿件已经写完，review agent 读它并写出 `review.md`，这对数据随后归档，留给人类专家评估质量。
+Turn papers into standard [Harbor](https://www.harborframework.com/docs/tasks)
+tasks for **collecting** peer reviews: the manuscript is already written, a
+review agent reads it and writes `review.md`, and the pair is archived for
+human experts to assess later.
 
-这是本项目的主线流水线（`docs/PAPER2HARBOR.md` 是详细文档）。旧的 OSP 顺序批跑 harness
-（`tools/`、`docs/OSP_BATCH.md`）已被取代、处于退役状态，等 Harbor 任务跑完整轮后删除。
+The mainline pipeline is documented in [`docs/PAPER2HARBOR.md`](docs/PAPER2HARBOR.md);
+the reproducible model-condition benchmark is documented in
+[`docs/BENCHMARK.md`](docs/BENCHMARK.md).
 
-## 现在支持的功能
+## What it does
 
-| 功能 | 说明 |
+| Feature | Description |
 |---|---|
-| **语料发现** | `papers/<slug>/` 下放任意形状的 TeX 源（目录、`.tar.gz`、`.zip`、裸 `.tex`）即自动成为任务，无需注册步骤 |
-| **多版本任务** | 同一论文的每个版本（`v1/v2/v3`）是独立任务；支持显式声明稿件 PDF，自动识别 toplevel TeX |
-| **阶段化构建** | `stage` 解包并记录 withheld/净化清单；`show-map` 校验 toplevel 文件与标题提取 |
-| **泄露防护** | `emit` 渲染后立即审计、`audit` 独立重审磁盘上的任务；任何把写作期缺陷轨迹（`solution-*/paper/review/`、`plan.md`）或后一版本带进环境的任务会被删除并中断命令 |
-| **Harbor 任务生成** | 输出 `schema_version = "1.4"` 任务，`harbor run` 可直接执行；含 `environment/`（TeX Live 子集 + agent 工具链）、`solution/`（占位 oracle）、独立 verifier 容器 |
-| **网络模式** | `none` / `agent` / `scholarly` 三档预设，host allowlist 同时作用于 environment 与 agent 两个阶段 |
-| **验证** | `verify <label> --agent oracle` 必须 1.0、`--agent nop` 必须 0.0；本机无 Docker 时打印 Linux 箱上的确切命令而非降级为弱检查 |
-| **paper-run v0.5.0 review agent** | `pre-harbor verify --agent paper-run` 集成 OpenCode 原生 paper-run 的 `review-report` plan，校验固定 plan、报告必需标题，归档 `.paper-run/` 状态 |
-| **Hugging Face 发布** | `publish` 上传到 `Jack-Jieke-Wu/Paper-Reviewing-Exam`，发布前再次审计、默认 dry-run；`harbor run --repo` 可直接跑已发布快照 |
-| **opencode 命令** | `/paper2task <label>`（stage → inspect → emit → audit）与 `/verify-task <label>`（oracle + floor） |
-| **语料规模** | 当前 **27 篇论文、31 个可审版本** |
+| **Corpus discovery** | Any TeX source under `papers/<slug>/` (directory, `.tar.gz`, `.zip`, bare `.tex`) becomes a task automatically; no registration step |
+| **Versioned tasks** | Each version (`v1/v2/v3`) of a paper is an independent task; explicit manuscript PDFs and toplevel TeX are auto-detected |
+| **Staged builds** | `stage` unpacks and records withheld/sanitized lists; `show-map` validates the toplevel file and extracted title |
+| **Leak protection** | `emit` audits immediately after rendering; `audit` re-checks tasks on disk; any task carrying writing-time defect trails (`solution-*/paper/review/`, `plan.md`) or a later revision is deleted and the command fails |
+| **Harbor task generation** | Outputs `schema_version = "1.4"` tasks executable directly by `harbor run`, with `environment/` (TeX Live subset + agent toolchain), `solution/` (placeholder oracle), and an independent verifier container |
+| **Network modes** | `none` / `agent` / `scholarly` presets; the host allowlist applies to both the environment and agent phases |
+| **Verification** | `verify <label> --agent oracle` must score 1.0, `--agent nop` must score 0.0; without Docker on this machine it prints the exact Linux-box command instead of degrading into a weaker check |
+| **paper-run v0.5.0 review agent** | `pre-harbor verify --agent paper-run` integrates the OpenCode-native paper-run `review-report` plan, validates the fixed plan and required report headings, and archives `.paper-run/` state |
+| **Hugging Face publishing** | `publish` uploads to `Jack-Jieke-Wu/Paper-Reviewing-Exam`, re-audits before publishing, defaults to dry-run; `harbor run --repo` runs the published snapshot directly |
+| **Reproducible benchmark** | `pre-harbor benchmark` runs one six-task Issue #19 model condition end to end and archives every trail (see [`docs/BENCHMARK.md`](docs/BENCHMARK.md)) |
+| **opencode commands** | `/paper2task <label>` (stage → inspect → emit → audit) and `/verify-task <label>` (oracle + floor) |
+| **Corpus size** | Currently **27 papers, 31 reviewable versions** |
 
-## 快速开始
+## Quick start
 
 ```bash
-uv run pre-harbor doctor          # 这台机器能做什么，什么必须交给 Linux 箱
-uv run pre-harbor list            # 每个版本及其 spec 状态
-uv run pre-harbor emit            # 渲染全部任务；每个任务都审计，泄露即删除
-uv run pre-harbor verify <label> --agent oracle    # 在 Linux 箱上运行，必须 1.0
+uv run pre-harbor doctor          # what this machine can do, what must go to a Linux box
+uv run pre-harbor list            # every version and its spec status
+uv run pre-harbor emit            # render all tasks; each is audited, leaks are deleted
+uv run pre-harbor verify <label> --agent oracle    # run on a Linux box; must score 1.0
 ```
 
-## CLI 总览
+## CLI overview
 
 ```
 pre-harbor list                 every version and its metadata status
@@ -44,29 +48,37 @@ pre-harbor audit                re-audit tasks on disk
 pre-harbor verify <label>       harbor run, or the command for a box with Docker
 pre-harbor publish --repo O/N   push to Hugging Face; dry run without --execute
 pre-harbor benchmark            run/archive one six-task Issue #19 model condition
+pre-harbor archive-trail        archive one Harbor run and optionally upload its trail
 ```
 
-## 文档导航
+## Documentation
 
-- `docs/PAPER2HARBOR.md` — 主文档：add a paper、build、prove、collect、publish、网络细节、私有边界、任务布局、reward
-- `docs/OSP_BATCH.md` — 退役中的 OSP 顺序批跑 harness（`tools/osp_batch.py`、`tools/osp_compare.py`）
-- `docs/ARTIFACT_CONTRACTS.md` — OSP 会话的 artifact 契约
-- `docs/OSP_FORK_WORKFLOW.md` — OSP fork 复现工作流
-- `docs/STATUS_REPORT.md` — 早期 issues #4/#5/#6 状态报告
-- `papers/README_*.md` — 各批语料收集备忘
+- [`docs/PAPER2HARBOR.md`](docs/PAPER2HARBOR.md) — main pipeline doc: add a paper, build, prove, collect, publish, network details, privacy boundary, task layout, reward
+- [`docs/BENCHMARK.md`](docs/BENCHMARK.md) — how to run the reproducible benchmark (`pre-harbor benchmark`): prerequisites, commands, outputs, result interpretation
+- `CHANGELOG.md` — release history
 
-## 仓库与数据集的关系
+## Repositories and datasets
 
-三个位置承载不同角色，发布物互不替代：
+Three locations carry different roles; the artifacts do not replace each other:
 
-| 位置 | 角色 | 内容 | 访问 |
+| Location | Role | Contents | Access |
 |---|---|---|---|
-| `a-green-hand-jack/paper-review-bench` (GitHub) | 源码与语料库 | 本项目代码、`papers/` 语料、文档；是**唯一**可编辑、可重建的来源 | 公开 |
-| `Jack-Jieke-Wu/Paper-Reviewing-Exam` (HF dataset) | 可运行任务快照 | `pre-harbor publish` 生成的任务树（`paper-review-exam/<task-id>/`），`harbor run --repo` 直接运行；不含语料全量 | 公开 |
-| `Jack-Jieke-Wu/Paper-Reviewing-Exam-Trails` (HF dataset) | review 运行轨迹归档 | OSP/agent 每次运行的 `brain/`、manifest、log（`osp-trails/<paper>/<timestamp>/`） | 公开 |
+| `a-green-hand-jack/paper-review-bench` (GitHub) | source and corpus | project code, `papers/` corpus, docs; the **only** editable, rebuildable source | public |
+| `Jack-Jieke-Wu/Paper-Reviewing-Exam` (Hugging Face dataset) | runnable task snapshot | the task tree generated by `pre-harbor publish` (`paper-review-exam/<task-id>/`), runnable directly by `harbor run --repo`; does not carry the full corpus | public |
+| `Jack-Jieke-Wu/Paper-Reviewing-Exam-Trails` (Hugging Face dataset) | review-run trail archive | per-run `brain/`, manifests, logs, verifier output, and the submitted review — `harbor-trails/<task-id>/<timestamp>/` (Harbor) and `osp-trails/<paper>/<timestamp>/` (legacy) | public |
 
-关系与流：
+Relationship and flow:
 
-1. **代码（GitHub）→ 任务（Exam）**：`pre-harbor publish` 把从 `papers/` 生成的 Harbor 任务上传到 Exam；生成的树重新审计后才发布，任务不被「写死」在仓库里，所以 Exam 的快照以它的 git commit/tag 为准。
-2. **运行 → 轨迹（Trails）**：`--trail-repo Jack-Jieke-Wu/Paper-Reviewing-Exam-Trails --upload` 把每次 review 的轨迹归档进 Trails；轨迹含审稿内容，是公开数据——**发布前确认你接受这些内容公开**。gitignore 保证本地 `osp-trails/` 不进入 GitHub 仓库。
-3. **版本对应**：GitHub 的 `v0.1.0` 是代码版本；Exam 与 Trails 各自是独立数据集，内容随各自 upload 更新，不随 GitHub tag 自动同步。三处都已打 `v0.1.0` tag 标记同一 benchmark 的第一代快照（见 `CHANGELOG.md`）。
+1. **Code (GitHub) → tasks (Exam)**: `pre-harbor publish` uploads the Harbor
+   tasks generated from `papers/` to Exam. The tree is re-audited before
+   publishing, and tasks are not "hard-coded" into the repository, so Exam
+   snapshots are authoritative at their own git commit/tag.
+2. **Run → trail (Trails)**: `pre-harbor benchmark` (or
+   `pre-harbor archive-trail --trail-repo Jack-Jieke-Wu/Paper-Reviewing-Exam-Trails --execute`)
+   archives each review run's trail into Trails. Trails contain review content
+   and are public — confirm you accept that exposure before uploading.
+   Local `osp-trails/` is gitignored so it never enters the GitHub repository.
+3. **Version correspondence**: GitHub `v0.1.0` is the code version; Exam and
+   Trails are independent datasets that update with their own uploads rather
+   than automatically with GitHub tags. All three carry the `v0.1.0` tag to
+   mark the first-generation snapshot of the same benchmark (see `CHANGELOG.md`).

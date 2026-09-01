@@ -24,8 +24,7 @@
 来自么志远发送的 examples.zip（其中「这两篇写得很好」）。作为写作质量正面示例用于 benchmark。
 ## paper.pdf 的来源
 
-`paper.pdf` 不是原始投稿件，是我们从 `paper.tex` 编译出来的，供 benchmark 作为输入使用
-（osp_batch 以 PDF 为 manuscript 入口）。
+`paper.pdf` 不是原始投稿件，是我们从 `paper.tex` 编译出来的，供 benchmark 作为输入使用。
 
 - 编译：`latexmk -xelatex`，7 页
 - `paper.tex` 本身已是重排版本（`article` + `fontspec`，非 1992 年 PRB 原始排版），

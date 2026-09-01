@@ -16,8 +16,9 @@ human experts to assess later.
 
 Corpus today: **27 papers, 31 reviewable versions**, all published at
 [Paper-Reviewing-Exam](https://huggingface.co/datasets/Jack-Jieke-Wu/Paper-Reviewing-Exam).
-This replaces the ad-hoc baseline harness in `tools/` (see
-[`OSP_BATCH.md`](OSP_BATCH.md)).
+Run a complete model condition with
+[`pre-harbor benchmark`](BENCHMARK.md) and archive every trail to
+[Paper-Reviewing-Exam-Trails](https://huggingface.co/datasets/Jack-Jieke-Wu/Paper-Reviewing-Exam-Trails).
 
 ## Storage and execution
 
@@ -196,6 +197,33 @@ needed — it scans the named subdirectory of the git tree for `task.toml`
 harbor run --repo https://huggingface.co/datasets/Jack-Jieke-Wu/Paper-Reviewing-Exam/tree/main/paper-review-exam \
   -a oracle -y --include-task-name "erdos973--v1"
 ```
+
+### Benchmark
+
+`pre-harbor benchmark` runs one model condition (provider/model/variant) over
+the six Issue #19 tasks and archives every trail to
+[`Paper-Reviewing-Exam-Trails`](https://huggingface.co/datasets/Jack-Jieke-Wu/Paper-Reviewing-Exam-Trails).
+The task snapshot is pinned by the immutable `--exam-revision` SHA that
+`pre-harbor publish` prints; the credential is exported from the host and only
+its variable *name* is ever recorded.
+
+```bash
+uv run pre-harbor benchmark \
+  --exam-revision <40-character-exam-sha> \
+  --model openai/gpt-5.6-sol \
+  --provider <provider-identity> \
+  --credential-env OPENAI_API_KEY \
+  --api-base-url https://<provider-host> \
+  --api-host <provider-host> \
+  --variant medium \
+  --execute
+```
+
+See [`BENCHMARK.md`](BENCHMARK.md) for the full contract: prerequisites,
+parameter validation, output layout (`harbor-trails/<task-id>/<timestamp>/`,
+report destinations), trail-manifest schema, failure handling, result
+interpretation, and how to compare model conditions without fooling yourself
+with single-run noise.
 
 ### In opencode
 
@@ -394,6 +422,7 @@ pre-harbor audit                re-audit tasks on disk
 pre-harbor verify <label>       harbor run, or the command for a box with Docker
 pre-harbor publish --repo O/N   push to Hugging Face; dry run without --execute
 pre-harbor benchmark            run/archive one six-task Issue #19 model condition
+pre-harbor archive-trail        archive one Harbor run and optionally upload its trail
 ```
 
 ## Laptop and Linux box
