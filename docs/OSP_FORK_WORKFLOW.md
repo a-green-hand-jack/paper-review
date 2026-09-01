@@ -113,7 +113,7 @@ because it was the only PDF-only entry at the time, and
 The whole corpus is mirrored in the public Hugging Face dataset
 `Jack-Jieke-Wu/osp-benchmark` (same `papers/` layout, 23 papers / 27 version
 runs). Review trails are archived separately in the private
-`Jack-Jieke-Wu/osp-trails`.
+`Jack-Jieke-Wu/Paper-Reviewing-Exam-Trails` (formerly `Jack-Jieke-Wu/osp-trails`).
 
 When the version PDFs and completed local trails are available, run the
 version comparison against existing trails without rerunning reviews. The
@@ -129,7 +129,7 @@ python3 tools/osp_compare.py \
   --llm openai/gpt-5.6-sol \
   --variant medium \
   --harness opencode \
-  --trail-repo Jack-Jieke-Wu/osp-trails \
+  --trail-repo Jack-Jieke-Wu/Paper-Reviewing-Exam-Trails \
   --reuse
 ```
 
@@ -145,7 +145,7 @@ python3 tools/osp_compare.py \
   --llm openai/gpt-5.6-sol \
   --variant medium \
   --harness opencode \
-  --trail-repo Jack-Jieke-Wu/osp-trails \
+  --trail-repo Jack-Jieke-Wu/Paper-Reviewing-Exam-Trails \
   --reuse
 ```
 

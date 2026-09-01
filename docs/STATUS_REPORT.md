@@ -52,7 +52,7 @@ Open ScholarPeer（OSP）的默认评审标准是照着 ML/NLP/CS 会议评审�
 
 ## 3. Benchmark：18 篇论文 before / after
 
-未改动 OSP 的基线（before）本来就已经跑完；改动之后（after）在同一台 Ubuntu 机器上，用完全相同的配置（`openai/gpt-5.6-sol` · `medium` · `opencode` · `arxiv`）重新跑了一遍全部 18 篇。全部 `completed`，全部已归档到私有 Hugging Face 数据集 `Jack-Jieke-Wu/osp-trails`。
+未改动 OSP 的基线（before）本来就已经跑完；改动之后（after）在同一台 Ubuntu 机器上，用完全相同的配置（`openai/gpt-5.6-sol` · `medium` · `opencode` · `arxiv`）重新跑了一遍全部 18 篇。全部 `completed`，全部已归档到私有 Hugging Face 数据集 `Jack-Jieke-Wu/Paper-Reviewing-Exam-Trails`（曾用名 `Jack-Jieke-Wu/osp-trails`）。
 
 审核由三个互不知情、互不共享上下文的独立 agent 完成，每人负责 6 篇，要求带引用原文、不必给面子。完整证据见 `docs/DOMAIN_ADAPTIVE_AUDIT.md`。
 
@@ -96,4 +96,4 @@ Open ScholarPeer（OSP）的默认评审标准是照着 ML/NLP/CS 会议评审�
 
 ---
 
-*fork commits: d8780e0 · d2a4827 · trails: Jack-Jieke-Wu/osp-trails (HF, private) · audit doc: docs/DOMAIN_ADAPTIVE_AUDIT.md*
+*fork commits: d8780e0 · d2a4827 · trails: Jack-Jieke-Wu/Paper-Reviewing-Exam-Trails (HF, private) · audit doc: docs/DOMAIN_ADAPTIVE_AUDIT.md*

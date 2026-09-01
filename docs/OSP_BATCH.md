@@ -56,7 +56,7 @@ python3 tools/osp_batch.py \
   --llm openai/gpt-5.6-sol \
   --variant medium \
   --harness opencode \
-  --trail-repo Jack-Jieke-Wu/osp-trails \
+  --trail-repo Jack-Jieke-Wu/Paper-Reviewing-Exam-Trails \
   --upload \
   --all \
   --execute
@@ -131,7 +131,7 @@ python3 tools/osp_compare.py \
   --llm openai/gpt-5.6-sol \
   --variant medium \
   --harness opencode \
-  --trail-repo Jack-Jieke-Wu/osp-trails
+  --trail-repo Jack-Jieke-Wu/Paper-Reviewing-Exam-Trails
 ```
 
 Two-version comparison of a corpus directory, e.g. the LSM charge transport
@@ -145,7 +145,7 @@ python3 tools/osp_compare.py \
   --llm openai/gpt-5.6-sol \
   --variant medium \
   --harness opencode \
-  --trail-repo Jack-Jieke-Wu/osp-trails
+  --trail-repo Jack-Jieke-Wu/Paper-Reviewing-Exam-Trails
 ```
 
 To reuse existing local completed trails instead, add `--reuse`. Reuse does

@@ -14,7 +14,7 @@ human experts to assess later.
   data — putting an LLM judge here would mean a model deciding what counts as a
   good review, which is exactly the judgement the experts are for.
 
-Corpus today: **23 papers, 27 reviewable versions**, all published at
+Corpus today: **27 papers, 31 reviewable versions**, all published at
 [Paper-Reviewing-Exam](https://huggingface.co/datasets/Jack-Jieke-Wu/Paper-Reviewing-Exam).
 This replaces the ad-hoc baseline harness in `tools/` (see
 [`OSP_BATCH.md`](OSP_BATCH.md)).
