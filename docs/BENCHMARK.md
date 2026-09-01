@@ -100,6 +100,8 @@ harbor run \
   --job-name my-agent-run-1 \
   --n-concurrent 1 --n-concurrent-agents 1 \
   --no-delete --yes \
+  --artifact /workspace/.brain \
+  --artifact /workspace/material-manifest.json \
   --allow-agent-host arxiv.org \
   --allow-agent-host api.semanticscholar.org \
   --allow-environment-host arxiv.org \
@@ -118,6 +120,14 @@ install itself needs network, and the provider host must be allowed for the
 agent phase. Without those hosts the run dies in setup before the agent ever
 reads the paper. Add your provider host the same way if it is not already in
 the launch environment.
+
+The `--artifact` flags are not optional for the OSP agent:
+`/workspace/.brain` holds the per-phase protocol products
+(`01_structured_summary.md` … `05_qa_*.md`, `review/final_review.md`,
+`session.json`) that make the trail the reproducibility record for human
+experts, and `material-manifest.json` pins the exact task input bytes. Harbor
+downloads them into the trial dir only when listed here; without them the
+archived trail is missing the OSP protocol evidence.
 
 Three rules for the custom path:
 
