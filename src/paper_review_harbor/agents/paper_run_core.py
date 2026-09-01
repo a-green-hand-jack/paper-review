@@ -156,7 +156,7 @@ def inject_instruction_command() -> str:
         "sed 's#/workspace/submission/review.md#.paper-run/review-findings.md#g' "
         f"{_q(TASK_INSTRUCTION)} >> {_q(REVIEW_DIR + '/PAPER.md')} && "
         f"python3 -c {_q(permission_script)} && "
-        f"cd {_q(REVIEW_DIR)} && git add PAPER.md opencode.json && "
+        f"cd {_q(REVIEW_DIR)} && git add PAPER.md && git add -f opencode.json && "
         + _nvm("paper-run checkpoint")
     )
 
