@@ -22,7 +22,7 @@ the reproducible model-condition benchmark is documented in
 | **Verification** | `verify <label> --agent oracle` must score 1.0, `--agent nop` must score 0.0; without Docker on this machine it prints the exact Linux-box command instead of degrading into a weaker check |
 | **paper-run v0.5.0 review agent** | `pre-harbor verify --agent paper-run` integrates the OpenCode-native paper-run `review-report` plan, validates the fixed plan and required report headings, and archives `.paper-run/` state |
 | **Hugging Face publishing** | `publish` uploads to `Jack-Jieke-Wu/Paper-Reviewing-Exam`, re-audits before publishing, defaults to dry-run; `harbor run --repo` runs the published snapshot directly |
-| **Reproducible benchmark** | `pre-harbor benchmark` runs one six-task Issue #19 model condition end to end and archives every trail (see [`docs/BENCHMARK.md`](docs/BENCHMARK.md)) |
+| **Reproducible benchmark** | `pre-harbor benchmark` runs the six-task Issue #19 set against the built-in OSP review agent and archives every trail; benchmark your own agent with `harbor run --agent <id>` + `pre-harbor archive-trail` (see [`docs/BENCHMARK.md`](docs/BENCHMARK.md)) |
 | **opencode commands** | `/paper2task <label>` (stage → inspect → emit → audit) and `/verify-task <label>` (oracle + floor) |
 | **Corpus size** | Currently **27 papers, 31 reviewable versions** |
 

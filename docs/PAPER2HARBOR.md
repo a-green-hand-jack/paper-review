@@ -225,6 +225,11 @@ report destinations), trail-manifest schema, failure handling, result
 interpretation, and how to compare model conditions without fooling yourself
 with single-run noise.
 
+`pre-harbor benchmark` always runs the built-in OSP review agent. To benchmark
+your own agent, run `harbor run --repo <exam-sha>/paper-review-exam --agent <id>`
+directly and archive each trial with `pre-harbor archive-trail` — see
+[`BENCHMARK.md`](BENCHMARK.md) for the full custom-agent procedure.
+
 ### In opencode
 
 `/paper2task <label>` runs stage → inspect → emit → audit and reports the box

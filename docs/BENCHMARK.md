@@ -78,6 +78,56 @@ uv run pre-harbor benchmark \
 Without `--execute` the command only prints the exact Harbor invocation and
 uploads nothing — use that to sanity-check before spending model budget.
 
+## Benchmarking a custom agent
+
+`pre-harbor benchmark` always runs the built-in OSP review agent
+(`paper_review_harbor.agents.osp:OSPReview`) — it is the reference agent this
+benchmark was built to evaluate. To benchmark **your own agent** (any Harbor
+agent id: `codex`, `opencode`, `paper-run`, a custom Python agent class), run
+Harbor directly against the published snapshot, then archive each trial with
+`pre-harbor archive-trail`:
+
+```bash
+# 1) Publish (or reuse) the exam snapshot and export the credential:
+uv run pre-harbor publish --repo Jack-Jieke-Wu/Paper-Reviewing-Exam --execute
+export OPENAI_API_KEY=...
+
+# 2) Run Harbor directly with your agent on the pinned snapshot:
+harbor run \
+  --repo https://huggingface.co/datasets/Jack-Jieke-Wu/Paper-Reviewing-Exam/tree/<40-character-exam-sha>/paper-review-exam \
+  --agent <your-agent-id> \
+  --jobs-dir jobs/<your-agent> \
+  --job-name my-agent-run-1 \
+  --n-concurrent 1 --n-concurrent-agents 1 \
+  --no-delete --yes \
+  --allow-agent-host arxiv.org \
+  --allow-agent-host api.semanticscholar.org \
+  --allow-environment-host arxiv.org \
+  --allow-environment-host api.semanticscholar.org
+
+# 3) Archive and upload one trail per trial:
+uv run pre-harbor archive-trail jobs/<your-agent>/my-agent-run-1/<trial-dir> \
+  --task-id <task-id> \
+  --task-revision <40-character-exam-sha> \
+  --trail-repo Jack-Jieke-Wu/Paper-Reviewing-Exam-Trails \
+  --execute
+```
+
+The allowlist flags matter: Harbor installs hosted agents at run time, so the
+install itself needs network, and the provider host must be allowed for the
+agent phase. Without those hosts the run dies in setup before the agent ever
+reads the paper. Add your provider host the same way if it is not already in
+the launch environment.
+
+Three rules for the custom path:
+
+- `--task-revision` must be the same immutable exam SHA used for the run; the
+  trail manifest uses it to trace each review to the exact task bytes.
+- `--execute` uploads to the public Trails dataset, publishing the review
+  content — confirm you accept that exposure first.
+- Uploading is per trial. Full jobs from `pre-harbor benchmark` are archived
+  and uploaded automatically; the custom path archives manually.
+
 ### Parameter contract (enforced by the CLI)
 
 | Option | Rule |
