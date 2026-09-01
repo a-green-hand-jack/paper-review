@@ -116,6 +116,9 @@ def stage_source_command(instruction: str) -> str:
         f"rm -rf {_q(SOURCE_DIR)} {_q(REVIEW_DIR)}; "
         f"mkdir -p {_q(SOURCE_DIR)}; "
         f"cp -r {_q(f'{WORKSPACE}/paper')}/. {_q(SOURCE_DIR)}/; "
+        # The harness template requires refs.bib even when no bibliography is
+        # supplied; an empty file makes the missing evidence explicit.
+        f"test -f {_q(SOURCE_DIR + '/refs.bib')} || : > {_q(SOURCE_DIR + '/refs.bib')}; "
         f"printf %s {_q(encoded)} | base64 --decode > {_q(TASK_INSTRUCTION)}; "
         f"cd {_q(SOURCE_DIR)} && git init && "
         'git config user.email "paper-run@localhost" && '
