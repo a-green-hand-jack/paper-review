@@ -82,3 +82,39 @@ def test_archive_harbor_trial_rejects_secret_metadata(tmp_path) -> None:
             task_revision="sha",
             metadata={"nested": {"token": "sk-abcdefghijklmnopqrst"}},
         )
+
+
+def test_archive_harbor_trial_skips_binary_runtime_state(tmp_path) -> None:
+    trial = tmp_path / "trial"
+    review = trial / "artifacts" / "workspace" / "submission" / "review.md"
+    review.parent.mkdir(parents=True)
+    review.write_text("review")
+    (trial / "artifacts" / "workspace" / "material-manifest.json").write_text("{}")
+    (trial / "artifacts" / "manifest.json").write_text("{}")
+    (trial / "config.json").write_text("{}")
+    (trial / "lock.json").write_text("{}")
+    # opencode runtime state: binary sqlite would accidentally match SECRET_RE,
+    # and git template hooks contain innocent text like "use IPC::Open2". Both
+    # must be excluded from the archived trail.
+    xdg = trial / "agent" / "opencode" / "xdg-data" / "opencode"
+    (xdg / "snapshot" / "global").mkdir(parents=True)
+    (xdg / "hooks").mkdir(parents=True)
+    (xdg / "opencode.db").write_bytes(b"\x00\x17\x01\x00index=\x17\x01\x00\x81\x19\x00")
+    (xdg / "hooks" / "fsmonitor-watchman.sample").write_text(
+        "example hook script to integrate Watchman\n"
+    )
+    # A real text agent log outside the runtime state must be archived, but the
+    # raw stdout tee (opencode.txt) is skipped: it can carry provider metadata
+    # (e.g. encrypted reasoning fields) that the secret regex cannot classify.
+    agent_root = trial / "agent"
+    (agent_root / "opencode.txt").write_text(
+        '{"reasoningEncryptedContent":"gAAAAABqlyJ7BKBaQqpQbrIgFA0sK-LXqJC_WE3idu"}\n'
+    )
+    (agent_root / "agent-summary.txt").write_text("structured agent summary\n")
+    trail = archive_harbor_trial(trial, tmp_path / "trails", task_id="task", task_revision="sha")
+    assert (trail / "review.md").is_file()
+    assert not (trail / "agent" / "opencode" / "xdg-data" / "opencode" / "opencode.db").exists()
+    assert not (trail / "agent" / "opencode" / "xdg-data").exists()
+    assert not (trail / "agent" / "opencode.txt").exists()
+    # Text logs at the agent root are still archived.
+    assert (trail / "agent" / "agent-summary.txt").is_file()

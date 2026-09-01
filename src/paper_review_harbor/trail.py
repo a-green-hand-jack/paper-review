@@ -74,8 +74,23 @@ def _copy_checked(source: Path, destination: Path, root: Path) -> None:
     destination.write_bytes(data)
 
 
-def _copy_tree_checked(source: Path, destination: Path, root: Path) -> None:
-    """Copy one known Harbor output subtree after checking every file."""
+def _copy_tree_checked(
+    source: Path,
+    destination: Path,
+    root: Path,
+    skip_dirs: tuple[str, ...] = (),
+    skip_files: tuple[str, ...] = (),
+) -> None:
+    """Copy one known Harbor output subtree after checking every file.
+
+    Binary files (agent GUI databases, git objects, rollup logs) are not
+    review evidence and are skipped: they can trip the secret regex on
+    arbitrary byte sequences, and they do not belong in a public trail.
+    ``skip_dirs`` removes runtime-internal state directories (e.g. agent
+    ``xdg-data``/``xdg-state`` trees), and ``skip_files`` drops specific
+    runtime artifacts such as an agent's raw stdout tee, which can carry
+    provider metadata that the secret regex cannot reliably classify.
+    """
     if source.is_symlink() or not source.is_dir():
         raise TrailError(f"unsafe or missing trail directory: {source}")
     for path in sorted(source.rglob("*")):
@@ -83,7 +98,15 @@ def _copy_tree_checked(source: Path, destination: Path, root: Path) -> None:
         if path.is_dir():
             if path.is_symlink():
                 raise TrailError(f"symlink in trail input: {path}")
+            if path.name in skip_dirs:
+                continue
             continue
+        if skip_dirs and any(part in skip_dirs for part in relative.parts[:-1]):
+            continue
+        if path.name in skip_files:
+            continue
+        if b"\x00" in path.read_bytes():
+            continue  # binary runtime state is not evidence
         _copy_checked(path, destination / relative, root)
 
 
@@ -204,7 +227,13 @@ def archive_harbor_trial(
         "verifier": trial_dir / "verifier",
     }.items():
         if source.exists():
-            _copy_tree_checked(source, target / destination_name, trial_dir)
+            _copy_tree_checked(
+                source,
+                target / destination_name,
+                trial_dir,
+                skip_dirs=("xdg-data", "xdg-state"),
+                skip_files=("opencode.txt",),
+            )
 
     manifest = {
         "schema_version": 2,

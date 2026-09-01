@@ -7,6 +7,19 @@ and this project aims to follow Semantic Versioning.
 
 ## [v0.2.0] - 2026-09-01
 
+### Changed
+
+- `pre-harbor archive-trail` now archives the Harbor 0.20 trial layout
+  (`artifacts/workspace/submission/review.md`) via `archive_harbor_trial`
+  instead of the legacy `archive_trail` layout, so the documented custom-agent
+  workflow actually works (`src/paper_review_harbor/cli.py`). Trail manifests
+  are schema `2`, matching `pre-harbor benchmark` output.
+- Trail archiving skips non-evidence runtime state: agent `xdg-data`/`xdg-state`
+  trees, binary files (sqlite DBs, git objects), and the opencode raw stdout
+  tee (`opencode.txt`, which carries provider metadata such as encrypted
+  reasoning fields). Structured evidence (review, manifests, brain, verifier
+  output, trajectory, `sessions/`) is still archived.
+
 ### Removed
 
 - Retiring OSP baseline harness and its documentation: `tools/osp_batch.py`,

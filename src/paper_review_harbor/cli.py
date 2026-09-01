@@ -33,7 +33,7 @@ from .ingest import ingest
 from .manifest import row_for, write_manifest
 from .publish import PublishError, create_tag, plan_publish, read_manifest, render_readme, upload
 from .spec import SpecError, TaskSpec, load_spec, spec_path
-from .trail import TrailError, archive_trail, upload_trail
+from .trail import TrailError, archive_harbor_trial, upload_trail
 
 app = typer.Typer(
     add_completion=False,
@@ -314,7 +314,7 @@ def publish(
 
 @app.command("archive-trail")
 def archive_trail_command(
-    run_dir: Annotated[Path, typer.Argument(help="Harbor artifact directory")],
+    run_dir: Annotated[Path, typer.Argument(help="Harbor trial directory (0.20 layout)")],
     task_id: Annotated[str, typer.Option(help="Harbor task id")],
     task_revision: Annotated[str, typer.Option(help="immutable Exam revision")],
     trails: Annotated[Path, typer.Option(help="local trail output root")] = Path("trails"),
@@ -322,9 +322,9 @@ def archive_trail_command(
     revision: Annotated[str, typer.Option(help="HF Trails branch or tag")] = "main",
     execute: Annotated[bool, typer.Option(help="upload the archived trail")] = False,
 ) -> None:
-    """Archive a Harbor run and optionally upload it to a Trails dataset."""
+    """Archive a Harbor trial and optionally upload it to a Trails dataset."""
     try:
-        trail = archive_trail(run_dir, trails, task_id=task_id, task_revision=task_revision)
+        trail = archive_harbor_trial(run_dir, trails, task_id=task_id, task_revision=task_revision)
         typer.echo(f"archived {trail}")
         if trail_repo:
             command = upload_trail(trail, trail_repo, revision=revision, execute=execute)
