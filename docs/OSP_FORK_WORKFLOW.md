@@ -111,10 +111,11 @@ because it was the only PDF-only entry at the time, and
 `paper.tex` (figures extracted from the PDF) so no task remains PDF-only.
 
 The whole corpus is mirrored in the public Hugging Face dataset
-`Jack-Jieke-Wu/osp-benchmark` (same `papers/` layout, 23 papers / 27 version
-runs). Review trails are archived separately in the public
-`Jack-Jieke-Wu/Paper-Reviewing-Exam-Trails` (public since 2026-09-01; formerly
-the private `Jack-Jieke-Wu/osp-trails`).
+`Jack-Jieke-Wu/Paper-Reviewing-Exam-Trails`, which was renamed from the
+intermediate name `Jack-Jieke-Wu/osp-benchmark` (same `papers/` layout, 23
+papers / 27 version runs). Review trails are archived in the same dataset
+(public since 2026-09-01; the even earlier private name was
+`Jack-Jieke-Wu/osp-trails`).
 
 When the version PDFs and completed local trails are available, run the
 version comparison against existing trails without rerunning reviews. The
