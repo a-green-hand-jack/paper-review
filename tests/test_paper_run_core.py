@@ -42,7 +42,14 @@ def test_instruction_is_injected_into_context_not_paper() -> None:
     command = core.inject_instruction_command()
     assert "PAPER.md" in command
     assert "/paper/BENCHMARK" not in command
-    assert "sed" in command
+    assert "review-findings.md" in command
+
+
+def test_instruction_context_uses_paper_run_checkpoint() -> None:
+    command = core.inject_instruction_command()
+    assert "PAPER.md" in command
+    assert "paper-run checkpoint" in command
+    assert "git commit" not in command
 
 
 def test_provider_config_does_not_embed_credentials() -> None:

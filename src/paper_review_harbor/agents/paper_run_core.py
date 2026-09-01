@@ -141,16 +141,15 @@ def review_prepare_command(model: str | None, variant: str | None) -> str:
 
 
 def inject_instruction_command() -> str:
-    """Add benchmark scope where the upstream reviewer reads it."""
+    """Add benchmark scope and record it as a paper-run checkpoint."""
     return (
         f"printf '\\n## Benchmark review requirements\\n\\n' >> "
         f"{_q(REVIEW_DIR + '/PAPER.md')} && "
         "sed 's#/workspace/submission/review.md#.paper-run/review-findings.md#g' "
         f"{_q(TASK_INSTRUCTION)} >> {_q(REVIEW_DIR + '/PAPER.md')} && "
         f"cd {_q(REVIEW_DIR)} && git add PAPER.md && "
-        "git commit -m 'Add benchmark review scope'"
+        + _nvm("paper-run checkpoint")
     )
-
 
 def review_start_command(model: str | None, variant: str | None) -> str:
     parts = [
