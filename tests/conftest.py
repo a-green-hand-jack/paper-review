@@ -84,12 +84,16 @@ def corpus(tmp_path: Path) -> Path:
 
     # 2. single-version archive
     single = root / "single_archive"
-    make_zip(single / "source.zip", {"main.tex": MINIMAL_TEX})
+    make_zip(
+        single / "source.zip",
+        {"main.tex": MINIMAL_TEX, "references.bib": "@article{smith2020, title={T}}"},
+    )
     (single / "single_archive.pdf").write_bytes(b"%PDF-1.4 fake")
 
     # 3. bare TeX
     bare = root / "bare_tex"
     write_tex(bare / "main.tex")
+    (bare / "references.bib").write_text("@article{smith2020, title={T}}", encoding="utf-8")
     (bare / "bare_tex.pdf").write_bytes(b"%PDF-1.4 fake")
 
     # 4. this project's manuscript layout, with its writing-time trail

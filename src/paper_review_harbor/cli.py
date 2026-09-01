@@ -20,6 +20,7 @@ from typing import Annotated
 import typer
 
 from .audit import audit_task
+from .benchmark import BenchmarkError, ModelConfig, run_benchmark
 from .corpus import CorpusError, PaperVersion, discover
 from .emit import (
     AGENT_INSTALL_HOSTS,
@@ -30,8 +31,9 @@ from .emit import (
 )
 from .ingest import ingest
 from .manifest import row_for, write_manifest
-from .publish import PublishError, plan_publish, read_manifest, render_readme, upload
+from .publish import PublishError, create_tag, plan_publish, read_manifest, render_readme, upload
 from .spec import SpecError, TaskSpec, load_spec, spec_path
+from .trail import TrailError, archive_trail, upload_trail
 
 app = typer.Typer(
     add_completion=False,
@@ -257,9 +259,12 @@ def publish(
     repo: Annotated[str, typer.Option(help="Hugging Face dataset, e.g. org/name")],
     tasks: Annotated[Path, typer.Option()] = DEFAULT_TASKS,
     papers: Annotated[Path, typer.Option()] = DEFAULT_PAPERS,
-    revision: Annotated[str, typer.Option(help="branch the harbor URL should name")] = "main",
+    revision: Annotated[str, typer.Option(help="HF branch, tag, or commit to upload to")] = "main",
     execute: Annotated[bool, typer.Option(help="actually upload; off by default")] = False,
     readme: Annotated[bool, typer.Option(help="also write the dataset card")] = True,
+    release_tag: Annotated[
+        str | None, typer.Option(help="create this immutable HF tag after upload")
+    ] = None,
 ) -> None:
     """Publish emitted tasks to Hugging Face. Re-audits first; dry run by default.
 
@@ -282,18 +287,103 @@ def publish(
     card = render_readme(plan, read_manifest(plan)) if readme else None
 
     try:
-        commands = upload(plan, readme=card, execute=execute)
+        result = upload(plan, readme=card, execute=execute)
+        if execute and release_tag:
+            assert result.resolved_revision is not None
+            create_tag(plan.repo_id, release_tag, result.resolved_revision)
     except PublishError as error:
         _err(str(error))
         raise typer.Exit(1) from error
 
     if not execute:
-        typer.echo(f"\nDry run. Pass --execute to upload:\n\n{commands}\n")
+        typer.echo(f"\nDry run. Pass --execute to upload:\n\n{result.commands}\n")
         typer.echo("Publishing is public and hard to undo; nothing was sent.")
         return
 
     _ok(f"\npublished to https://huggingface.co/datasets/{plan.repo_id}")
-    typer.echo(f"\nHarbor reads it directly:\n\n  {plan.harbor_command()}\n")
+    assert result.resolved_revision is not None
+    typer.echo(f"resolved immutable HF revision: {result.resolved_revision}")
+    if release_tag:
+        typer.echo(f"created HF dataset tag: {release_tag}")
+    typer.echo(
+        "\nHarbor reads the resolved revision directly:\n\n"
+        f"  harbor run --repo https://huggingface.co/datasets/{plan.repo_id}"
+        f"/tree/{result.resolved_revision}/{plan.dataset} -a opencode\n"
+    )
+
+
+@app.command("archive-trail")
+def archive_trail_command(
+    run_dir: Annotated[Path, typer.Argument(help="Harbor artifact directory")],
+    task_id: Annotated[str, typer.Option(help="Harbor task id")],
+    task_revision: Annotated[str, typer.Option(help="immutable Exam revision")],
+    trails: Annotated[Path, typer.Option(help="local trail output root")] = Path("trails"),
+    trail_repo: Annotated[str | None, typer.Option(help="HF Trails dataset")] = None,
+    revision: Annotated[str, typer.Option(help="HF Trails branch or tag")] = "main",
+    execute: Annotated[bool, typer.Option(help="upload the archived trail")] = False,
+) -> None:
+    """Archive a Harbor run and optionally upload it to a Trails dataset."""
+    try:
+        trail = archive_trail(run_dir, trails, task_id=task_id, task_revision=task_revision)
+        typer.echo(f"archived {trail}")
+        if trail_repo:
+            command = upload_trail(trail, trail_repo, revision=revision, execute=execute)
+            typer.echo(command if not execute else f"uploaded to {trail_repo}")
+    except TrailError as error:
+        _err(str(error))
+        raise typer.Exit(1) from error
+
+
+@app.command()
+def benchmark(
+    exam_revision: Annotated[str, typer.Option(help="immutable 40-character Exam commit SHA")],
+    model: Annotated[str, typer.Option(help="OpenAI-compatible model, e.g. openai/gpt-5.6-sol")],
+    provider: Annotated[str, typer.Option(help="provider identity recorded in every trail")],
+    credential_env: Annotated[
+        str, typer.Option(help="exported host credential variable; its value is never printed")
+    ],
+    api_base_url: Annotated[str, typer.Option(help="OpenAI-compatible provider base URL")],
+    api_host: Annotated[str, typer.Option(help="provider hostname for Harbor allowlists")],
+    variant: Annotated[str, typer.Option(help="reasoning effort/variant to record")] = "medium",
+    jobs: Annotated[Path, typer.Option(help="Harbor job output root")] = Path("jobs"),
+    trails: Annotated[Path, typer.Option(help="local safe trail archive root")] = Path("trails"),
+    trail_repo: Annotated[str, typer.Option(help="HF Trails dataset")] = (
+        "Jack-Jieke-Wu/Paper-Reviewing-Exam-Trails"
+    ),
+    trail_revision: Annotated[str, typer.Option(help="HF Trails branch or tag")] = "main",
+    execute: Annotated[
+        bool, typer.Option(help="run Harbor and upload trails; off by default")
+    ] = False,
+) -> None:
+    """Run the six Issue #19 tasks once for one configured model and archive every trial."""
+    config = ModelConfig(
+        name=model,
+        model=model,
+        provider=provider,
+        credential_env=credential_env,
+        api_base_url=api_base_url,
+        api_host=api_host,
+        variant=variant,
+    )
+    try:
+        commands, report = run_benchmark(
+            exam_revision=exam_revision,
+            model=config,
+            jobs_dir=jobs,
+            trails_dir=trails,
+            trail_repo=trail_repo,
+            trail_revision=trail_revision,
+            execute=execute,
+        )
+    except BenchmarkError as error:
+        _err(str(error))
+        raise typer.Exit(1) from error
+    if not execute:
+        typer.echo("Dry run. Pass --execute only after the credential is exported:")
+        typer.echo("\n".join(commands))
+        return
+    assert report is not None
+    _ok(f"benchmark trails uploaded; local report: {report}")
 
 
 # --------------------------------------------------------------------------

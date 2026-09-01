@@ -21,7 +21,6 @@ from one task.
 
 from __future__ import annotations
 
-import hashlib
 import json
 import shutil
 import stat
@@ -32,6 +31,7 @@ from pathlib import Path
 from jinja2 import Environment, FileSystemLoader, StrictUndefined
 
 from .ingest import IngestResult
+from .integrity import material_manifest, tree_digest
 from .spec import TaskSpec
 
 TEMPLATES = Path(__file__).parent / "templates"
@@ -155,13 +155,7 @@ def _write(path: Path, text: str, *, executable: bool = False) -> None:
 
 
 def _protocol_tree_digest(root: Path) -> str:
-    digest = hashlib.sha256()
-    for path in sorted(p for p in root.rglob("*") if p.is_file()):
-        digest.update(path.relative_to(root).as_posix().encode())
-        digest.update(b"\0")
-        digest.update(path.read_bytes())
-        digest.update(b"\0")
-    return digest.hexdigest()
+    return tree_digest(root)
 
 
 def emit_task(result: IngestResult, spec: TaskSpec, config: EmitConfig) -> Path:
@@ -215,6 +209,29 @@ def emit_task(result: IngestResult, spec: TaskSpec, config: EmitConfig) -> Path:
         env.get_template("environment.Dockerfile.j2").render(**common),
     )
     shutil.copytree(result.root, task_dir / "environment" / "paper")
+    source = {
+        "kind": result.source_kind,
+        "path": Path(result.source_path).name,
+        "sha256": result.source_sha256,
+    }
+    manifest = json.dumps(
+        material_manifest(
+            task_dir / "environment" / "paper",
+            source=source,
+            main_tex=result.main_tex,
+            manuscript_pdf=result.manuscript_pdf,
+            excluded=result.excluded,
+            sanitised=result.sanitised,
+        ),
+        indent=2,
+    ) + "\n"
+    # The task-root copy is audited before publish. The environment copy is
+    # checked during Docker build after Harbor has fetched the remote revision.
+    (task_dir / "material-manifest.json").write_text(manifest, encoding="utf-8")
+    (task_dir / "environment" / "material-manifest.json").write_text(
+        manifest, encoding="utf-8"
+    )
+    shutil.copy2(TEMPLATES / "validate_materials.py", task_dir / "environment")
 
     _write(
         task_dir / "solution" / "solve.sh",

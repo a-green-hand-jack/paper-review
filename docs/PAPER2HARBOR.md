@@ -166,6 +166,21 @@ pre-harbor publish --repo Jack-Jieke-Wu/Paper-Reviewing-Exam            # dry ru
 pre-harbor publish --repo Jack-Jieke-Wu/Paper-Reviewing-Exam --execute
 ```
 
+Pass an explicit branch, tag, or commit with `--revision`. The upload command
+uses that revision, and the generated task contains `material-manifest.json`
+with a per-file size, SHA-256, LFS status, and paper tree digest. Formal runs
+should record the resolved HF commit SHA and use that SHA in `harbor run --repo`.
+For a formal release, create a named tag after resolving that SHA:
+
+```bash
+pre-harbor publish --repo Jack-Jieke-Wu/Paper-Reviewing-Exam \
+  --revision issue-19-materials-v1 --release-tag issue-19-materials-v1 --execute
+```
+
+`publish` prints the immutable SHA returned by Hugging Face. That SHA, rather
+than the mutable branch or tag name, is the only accepted `--exam-revision` for
+the Issue #19 benchmark command.
+
 The audit runs again at publish time rather than trusting that `emit` ran it,
 because the tasks on disk may have been touched since, and one contaminated task
 in a published dataset is worse than no dataset — the reviews collected against
@@ -378,6 +393,7 @@ pre-harbor emit [labels...]     render tasks; audits each, deletes on leak
 pre-harbor audit                re-audit tasks on disk
 pre-harbor verify <label>       harbor run, or the command for a box with Docker
 pre-harbor publish --repo O/N   push to Hugging Face; dry run without --execute
+pre-harbor benchmark            run/archive one six-task Issue #19 model condition
 ```
 
 ## Laptop and Linux box

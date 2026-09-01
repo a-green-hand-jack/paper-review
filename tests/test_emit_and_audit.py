@@ -63,6 +63,8 @@ class TestEmit:
             "task.toml",
             "instruction.md",
             "environment/Dockerfile",
+            "environment/material-manifest.json",
+            "environment/validate_materials.py",
             "environment/paper/main.tex",
             "solution/solve.sh",
             "tests/Dockerfile",
@@ -71,6 +73,22 @@ class TestEmit:
             "tests/contract.json",
         ):
             assert (task_dir / relative).is_file(), relative
+
+    def test_environment_validates_the_material_manifest(self, emitted) -> None:
+        _, task_dir = emitted
+        result = subprocess.run(
+            [
+                sys.executable,
+                str(task_dir / "environment" / "validate_materials.py"),
+                str(task_dir / "environment" / "material-manifest.json"),
+                str(task_dir / "environment" / "paper"),
+            ],
+            capture_output=True,
+            text=True,
+        )
+        assert result.returncode == 0, result.stderr
+        dockerfile = (task_dir / "environment" / "Dockerfile").read_text(encoding="utf-8")
+        assert "validate_materials.py" in dockerfile
 
     def test_entry_scripts_are_executable(self, emitted) -> None:
         _, task_dir = emitted

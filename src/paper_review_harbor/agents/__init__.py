@@ -1,1 +1,1 @@
-"""Harbor agent integrations for paper-review benchmark protocols."""
+"""Harbor-installed review agents shipped by this project."""

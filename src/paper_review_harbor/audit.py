@@ -36,6 +36,7 @@ from .corpus import (
     PRIVATE_DIRNAMES,
     PaperVersion,
 )
+from .integrity import file_inventory, material_violations, tree_digest
 
 REQUIRED_FILES = (
     "task.toml",
@@ -264,6 +265,39 @@ def audit_task(task_dir: Path, version: PaperVersion | None = None) -> list[Viol
         violations.append(Violation("structure", "environment/paper/ is missing"))
         return violations
     paper = environment / "paper"
+
+    for detail in material_violations(paper):
+        violations.append(Violation("material", detail))
+    manifest_path = task_dir / "material-manifest.json"
+    if not manifest_path.is_file():
+        violations.append(Violation("material-manifest", "material-manifest.json is missing"))
+    else:
+        try:
+            manifest = json.loads(
+                manifest_path.read_text(encoding="utf-8"),
+                parse_constant=lambda value: (_ for _ in ()).throw(
+                    ValueError(f"invalid JSON constant {value}")
+                ),
+            )
+            if not isinstance(manifest, dict):
+                raise TypeError("manifest must be an object")
+            source = manifest.get("source")
+            if not isinstance(source, dict):
+                raise TypeError("source must be an object")
+            source_path = source.get("path")
+            if not isinstance(source_path, str) or Path(source_path).name != source_path:
+                raise TypeError("source path must be a basename")
+            if manifest.get("schema_version") != 1:
+                raise TypeError("unsupported schema version")
+            actual_files = file_inventory(paper)
+            if manifest.get("tree_sha256") != tree_digest(paper):
+                violations.append(
+                    Violation("material-manifest", "paper tree digest does not match")
+                )
+            if manifest.get("files") != actual_files:
+                violations.append(Violation("material-manifest", "file inventory does not match"))
+        except (OSError, UnicodeError, ValueError, TypeError):
+            violations.append(Violation("material-manifest", "material-manifest.json is invalid"))
 
     # The instruction and staged input are separate outputs of emit. Check both
     # rather than trusting its PDF-selection result when auditing a task.

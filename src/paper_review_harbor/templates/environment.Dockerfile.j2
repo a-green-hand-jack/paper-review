@@ -44,6 +44,12 @@ WORKDIR /workspace
 # Public manuscript material only. The writing-time trail (review/, plan.md) and
 # any later version of this paper are not in this image.
 COPY paper/ /workspace/paper/
+COPY material-manifest.json validate_materials.py /workspace/
+
+# Verify the remote task bytes before an agent can see them. This catches a
+# Git-LFS pointer or a substituted binary in Harbor's actual build context.
+RUN python3 /workspace/validate_materials.py /workspace/material-manifest.json /workspace/paper \
+    && rm /workspace/validate_materials.py
 
 # Scratch space PDF tooling reaches for by default, pre-created so nothing has
 # to ask permission for it mid-run.
