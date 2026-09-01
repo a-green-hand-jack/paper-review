@@ -68,4 +68,4 @@ pre-harbor publish --repo O/N   push to Hugging Face; dry run without --execute
 
 1. **代码（GitHub）→ 任务（Exam）**：`pre-harbor publish` 把从 `papers/` 生成的 Harbor 任务上传到 Exam；生成的树重新审计后才发布，任务不被「写死」在仓库里，所以 Exam 的快照以它的 git commit/tag 为准。
 2. **运行 → 轨迹（Trails）**：`--trail-repo Jack-Jieke-Wu/Paper-Reviewing-Exam-Trails --upload` 把每次 review 的轨迹归档进 Trails；轨迹含可能机密的审稿内容，所以该数据集要求授权访问，gitignore 保证本地 `osp-trails/` 不进入 GitHub 仓库。
-3. **版本对应**：GitHub 的 `v0.1.0` 是代码版本；Exam 与 Trails 各自是独立数据集，内容随各自 upload 更新，不随 GitHub tag 自动同步。它们在语义上属于同一 benchmark（Paper Reviewing Exam）的第一代，可各自打 `v0.1.0` 标记与代码发布对应（见 `CHANGELOG.md`）。
+3. **版本对应**：GitHub 的 `v0.1.0` 是代码版本；Exam 与 Trails 各自是独立数据集，内容随各自 upload 更新，不随 GitHub tag 自动同步。三处都已打 `v0.1.0` tag 标记同一 benchmark 的第一代快照（见 `CHANGELOG.md`）。
