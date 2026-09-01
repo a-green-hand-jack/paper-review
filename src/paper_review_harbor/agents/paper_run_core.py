@@ -77,8 +77,10 @@ def paper_run_install_command() -> str:
         "https://github.com/a-green-hand-jack/paper-run.git /tmp/paper-run-src && "
         "cd /tmp/paper-run-src && "
         f"test \"$(git rev-parse HEAD)\" = {_q(PAPER_RUN_COMMIT)} && "
+        "test \"$(node -p 'require(\"./package.json\").version')\" = "
+        f"{_q(PAPER_RUN_VERSION)} && "
         "npm ci && npm run build && npm install -g . && "
-        f"test \"$(paper-run --version)\" = {_q(PAPER_RUN_VERSION)}"
+        "paper-run --version"
     )
 
 

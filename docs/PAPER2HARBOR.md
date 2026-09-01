@@ -180,6 +180,9 @@ The v0.5.0 GitHub release currently has no tarball/checksum assets, so its
 versioned `install.sh` cannot complete. The wrapper therefore performs a pinned
 source build without patching upstream code. Switch back to the official
 installer after those release assets are published.
+The tag's `src/version.ts` currently reports the stale CLI version `0.2.0`; the
+wrapper validates the tag commit and `package.json` version `0.5.0` instead,
+while preserving the CLI output in the run log.
 
 Run it on Ubuntu with Harbor and Docker:
 

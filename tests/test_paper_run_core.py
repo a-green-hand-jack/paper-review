@@ -18,6 +18,7 @@ def test_pins_v050_and_uses_official_installer() -> None:
     command = core.paper_run_install_command()
     assert "--branch v0.5.0" in command
     assert core.PAPER_RUN_COMMIT in command
+    assert "package.json" in command
     assert "npm ci && npm run build && npm install -g ." in command
     assert "paper-run --version" in command
 
