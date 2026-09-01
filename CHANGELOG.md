@@ -5,6 +5,36 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project aims to follow Semantic Versioning.
 
+## [v0.3.0] - 2026-09-02
+
+### Removed
+
+- **Built-in paper-review agents.** The benchmark no longer maintains specific
+  paper-review agents: the whole `src/paper_review_harbor/agents/` package (OSP
+  `OSPReview` reference agent and the `paper-run` v0.5.0 installed agent) is
+  deleted. Paper-review agents support the benchmark themselves by running
+  inside Harbor and writing `/workspace/submission/review.md`.
+- **`pre-harbor benchmark` command and `benchmark.py`.** The command only ever
+  ran the built-in OSP agent; the generic path (`harbor run --agent <id>` +
+  `pre-harbor archive-trail`) is now the only benchmark path.
+- **paper-run protocol** from the task contract (`contract.json`
+  `paper_run_required_headings` / `paper_run_task_source_digest`) and from the
+  verifier (`check_submission.py` no longer validates a `paper-run.json`).
+- **paper-run-only `verify` options** (`--variant`, `--timeout-multiplier`,
+  `--setup-timeout-multiplier`) and the `paper-run` agent alias.
+- `tests/test_benchmark.py` and `tests/test_paper_run_core.py` and the
+  paper-run contract tests.
+
+### Changed
+
+- The benchmark is agent-agnostic by design; `README.md`, `docs/BENCHMARK.md`,
+  and `docs/PAPER2HARBOR.md` now describe a single generic workflow.
+- The scholarly network preset (`SCHOLARLY_HOSTS`) now also allows the Bohrium
+  `bohr` CLI platform hosts and Google Scholar (`scholar.google.com`), so
+  agents retrieving through `bohr`/Google Scholar run under
+  `--network scholarly` without the benchmark blocking their literature
+  sources.
+
 ## [v0.2.0] - 2026-09-01
 
 ### Changed

@@ -118,7 +118,8 @@ def render_readme(plan: PublishPlan, manifest_rows: list[dict]) -> str:
     domains = sorted({row.get("domain", "unknown") for row in manifest_rows})
     slugs = sorted({row.get("paper_slug", "") for row in manifest_rows})
     declared_domains = [d for d in domains if d not in ("", "unknown")]
-    fields = ", ".join(declared_domains) if declared_domains else "not declared (specs/<slug>.yaml is optional)"
+    declared = ", ".join(declared_domains)
+    fields = declared if declared_domains else "not declared (specs/<slug>.yaml is optional)"
     return f"""---
 license: mit
 task_categories:

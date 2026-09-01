@@ -20,7 +20,6 @@ from typing import Annotated
 import typer
 
 from .audit import audit_task
-from .benchmark import BenchmarkError, ModelConfig, run_benchmark
 from .corpus import CorpusError, PaperVersion, discover
 from .emit import (
     AGENT_INSTALL_HOSTS,
@@ -334,62 +333,9 @@ def archive_trail_command(
         raise typer.Exit(1) from error
 
 
-@app.command()
-def benchmark(
-    exam_revision: Annotated[str, typer.Option(help="immutable 40-character Exam commit SHA")],
-    model: Annotated[str, typer.Option(help="OpenAI-compatible model, e.g. openai/gpt-5.6-sol")],
-    provider: Annotated[str, typer.Option(help="provider identity recorded in every trail")],
-    credential_env: Annotated[
-        str, typer.Option(help="exported host credential variable; its value is never printed")
-    ],
-    api_base_url: Annotated[str, typer.Option(help="OpenAI-compatible provider base URL")],
-    api_host: Annotated[str, typer.Option(help="provider hostname for Harbor allowlists")],
-    variant: Annotated[str, typer.Option(help="reasoning effort/variant to record")] = "medium",
-    jobs: Annotated[Path, typer.Option(help="Harbor job output root")] = Path("jobs"),
-    trails: Annotated[Path, typer.Option(help="local safe trail archive root")] = Path("trails"),
-    trail_repo: Annotated[str, typer.Option(help="HF Trails dataset")] = (
-        "Jack-Jieke-Wu/Paper-Reviewing-Exam-Trails"
-    ),
-    trail_revision: Annotated[str, typer.Option(help="HF Trails branch or tag")] = "main",
-    execute: Annotated[
-        bool, typer.Option(help="run Harbor and upload trails; off by default")
-    ] = False,
-) -> None:
-    """Run the six Issue #19 tasks once for one configured model and archive every trial."""
-    config = ModelConfig(
-        name=model,
-        model=model,
-        provider=provider,
-        credential_env=credential_env,
-        api_base_url=api_base_url,
-        api_host=api_host,
-        variant=variant,
-    )
-    try:
-        commands, report = run_benchmark(
-            exam_revision=exam_revision,
-            model=config,
-            jobs_dir=jobs,
-            trails_dir=trails,
-            trail_repo=trail_repo,
-            trail_revision=trail_revision,
-            execute=execute,
-        )
-    except BenchmarkError as error:
-        _err(str(error))
-        raise typer.Exit(1) from error
-    if not execute:
-        typer.echo("Dry run. Pass --execute only after the credential is exported:")
-        typer.echo("\n".join(commands))
-        return
-    assert report is not None
-    _ok(f"benchmark trails uploaded; local report: {report}")
-
-
 # --------------------------------------------------------------------------
 # handing work to a machine with Docker
 # --------------------------------------------------------------------------
-
 
 NETWORK_MODES = {
     #: Only oracle and nop can run with nothing allowed; a hosted agent cannot
@@ -401,8 +347,6 @@ NETWORK_MODES = {
     #: any multi-version paper in this corpus.
     "scholarly": AGENT_INSTALL_HOSTS + SCHOLARLY_HOSTS,
 }
-
-PAPER_RUN_AGENT = "paper_review_harbor.agents.paper_run:PaperRun"
 
 
 def _host_args(hosts: tuple[str, ...]) -> list[str]:
@@ -430,13 +374,6 @@ def verify(
         list[str] | None,
         typer.Option(help="env var name to pass to the agent, e.g. OPENAI_API_KEY"),
     ] = None,
-    variant: Annotated[str, typer.Option(help="paper-run reasoning variant")] = "",
-    timeout_multiplier: Annotated[
-        int, typer.Option(help="Harbor agent timeout multiplier")
-    ] = 1,
-    setup_timeout_multiplier: Annotated[
-        int, typer.Option(help="Harbor installed-agent setup timeout multiplier")
-    ] = 1,
     no_delete: Annotated[
         bool, typer.Option(help="keep the Harbor container and workspace after the run")
     ] = False,
@@ -461,22 +398,9 @@ def verify(
         )
         raise typer.Exit(2)
 
-    harbor_agent = PAPER_RUN_AGENT if agent == "paper-run" else agent
-    command = ["harbor", "run", "-p", str(task_dir), "-a", harbor_agent]
+    command = ["harbor", "run", "-p", str(task_dir), "-a", agent]
     if model:
         command += ["-m", model]
-    if agent == "paper-run" and variant:
-        command += ["--agent-kwarg", f"variant={variant}"]
-    if agent == "paper-run" and timeout_multiplier != 1:
-        if timeout_multiplier < 1:
-            _err("--timeout-multiplier must be at least 1")
-            raise typer.Exit(2)
-        command += ["--agent-timeout-multiplier", str(timeout_multiplier)]
-    if agent == "paper-run" and setup_timeout_multiplier != 1:
-        if setup_timeout_multiplier < 1:
-            _err("--setup-timeout-multiplier must be at least 1")
-            raise typer.Exit(2)
-        command += ["--agent-setup-timeout-multiplier", str(setup_timeout_multiplier)]
     command += ["-y"]
     if no_delete:
         command += ["--no-delete"]

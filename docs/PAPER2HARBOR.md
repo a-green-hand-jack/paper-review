@@ -179,8 +179,8 @@ pre-harbor publish --repo Jack-Jieke-Wu/Paper-Reviewing-Exam \
 ```
 
 `publish` prints the immutable SHA returned by Hugging Face. That SHA, rather
-than the mutable branch or tag name, is the only accepted `--exam-revision` for
-the Issue #19 benchmark command.
+than the mutable branch or tag name, is the SHA you pass as `--task-revision`
+when archiving a trail (see Benchmark above).
 
 The audit runs again at publish time rather than trusting that `emit` ran it,
 because the tasks on disk may have been touched since, and one contaminated task
@@ -200,94 +200,33 @@ harbor run --repo https://huggingface.co/datasets/Jack-Jieke-Wu/Paper-Reviewing-
 
 ### Benchmark
 
-`pre-harbor benchmark` runs one model condition (provider/model/variant) over
-the six Issue #19 tasks and archives every trail to
-[`Paper-Reviewing-Exam-Trails`](https://huggingface.co/datasets/Jack-Jieke-Wu/Paper-Reviewing-Exam-Trails).
-The task snapshot is pinned by the immutable `--exam-revision` SHA that
-`pre-harbor publish` prints; the credential is exported from the host and only
-its variable *name* is ever recorded.
+The benchmark is **agent-agnostic**: it provides the tasks and the trail
+archive, and a paper-review agent supports it by running inside Harbor and
+writing `/workspace/submission/review.md`. Run any Harbor agent against the
+pinned Exam snapshot, then archive each trial with `pre-harbor archive-trail`:
 
 ```bash
-uv run pre-harbor benchmark \
-  --exam-revision <40-character-exam-sha> \
-  --model openai/gpt-5.6-sol \
-  --provider <provider-identity> \
-  --credential-env OPENAI_API_KEY \
-  --api-base-url https://<provider-host> \
-  --api-host <provider-host> \
-  --variant medium \
+harbor run --repo https://huggingface.co/datasets/Jack-Jieke-Wu/Paper-Reviewing-Exam/tree/<exam-sha>/paper-review-exam \
+  -a <agent-id> --include-task-name "erdos973--v1"
+
+pre-harbor archive-trail jobs/<agent>/<job>/<trial-dir> \
+  --task-id erdos973--v1 \
+  --task-revision <40-character-exam-sha> \
+  --trail-repo Jack-Jieke-Wu/Paper-Reviewing-Exam-Trails \
   --execute
 ```
 
-See [`BENCHMARK.md`](BENCHMARK.md) for the full contract: prerequisites,
-parameter validation, output layout (`harbor-trails/<task-id>/<timestamp>/`,
-report destinations), trail-manifest schema, failure handling, result
-interpretation, and how to compare model conditions without fooling yourself
-with single-run noise.
-
-`pre-harbor benchmark` always runs the built-in OSP review agent. To benchmark
-your own agent, run `harbor run --repo <exam-sha>/paper-review-exam --agent <id>`
-directly and archive each trial with `pre-harbor archive-trail` — see
-[`BENCHMARK.md`](BENCHMARK.md) for the full custom-agent procedure.
+The task snapshot is pinned by the immutable SHA that `pre-harbor publish`
+prints; secrets are exported from the host and only their variable *names* are
+ever recorded. See [`BENCHMARK.md`](BENCHMARK.md) for the full procedure:
+prerequisites, the six-task Issue #19 set, allowlist rules, trail-manifest
+schema, failure handling, result interpretation, and how to compare agent
+conditions without fooling yourself with single-run noise.
 
 ### In opencode
 
 `/paper2task <label>` runs stage → inspect → emit → audit and reports the box
 commands. `/verify-task <label>` runs the oracle and the floor.
-
-### paper-run v0.5.0 review agent
-
-This benchmark also provides a separate Harbor installed-agent integration for
-the OpenCode-native [`paper-run`](https://github.com/a-green-hand-jack/paper-run)
-v0.5.0 review workflow. It is not the older 13-stage paper-writing `start`
-integration: the wrapper prepares an isolated external-repository source, runs
-the upstream `review-report` plan, and exports
-`.paper-run/review-findings.md` as `/workspace/submission/review.md`.
-The benchmark instruction is appended to the generated `PAPER.md` context with
-the output path normalized to the upstream report location.
-
-The wrapper is registered by import path and verifies the annotated v0.5.0 tag
-against commit `9925848adf195e68d3f3e3039959f9f2c19fb7a3` before building it:
-
-```text
-paper_review_harbor.agents.paper_run:PaperRun
-```
-
-The v0.5.0 GitHub release currently has no tarball/checksum assets, so its
-versioned `install.sh` cannot complete. The wrapper therefore performs a pinned
-source build without patching upstream code. Switch back to the official
-installer after those release assets are published.
-The tag's `src/version.ts` currently reports the stale CLI version `0.2.0`; the
-wrapper validates the tag commit and `package.json` version `0.5.0` instead,
-while preserving the CLI output in the run log.
-The wrapper also removes only the trailing newline from `review-source.json`:
-v0.5.0 compares execa's newline-stripped `git show` output with the raw file,
-which otherwise makes every report-only checkpoint fail as a false mutation.
-
-Run it on Ubuntu with Harbor and Docker:
-
-```bash
-uv run pre-harbor verify erdos973--v1 \
-  --agent paper-run \
-  --model openai/gpt-5.6-sol \
-  --variant medium \
-  --timeout-multiplier 4 \
-  --setup-timeout-multiplier 4 \
-  --network scholarly \
-  --api-host api.apexin.ai \
-  --agent-env OPENAI_API_KEY \
-  --agent-env OPENAI_BASE_URL \
-  --no-delete
-```
-
-`--no-delete` is recommended while debugging. The wrapper keeps the source
-repository digest and imported `paper/` digest, verifies the fixed
-`review-report` plan contains no `revision`, checks the required report
-headings, and archives `review-source.json`, `run.json`, stage history and
-other `.paper-run/` state under `/logs/agent/paper-run/`. Secrets are passed
-through Harbor environment templates and are never written to configuration or
-artifacts. The generic `oracle`/`nop` checks remain unchanged; paper-run's
-structured contract is an additional protocol-specific check.
 
 ---
 
@@ -320,6 +259,14 @@ does both.
 
 **Most real agents also need `-m`.** Without it the codex adapter raises
 `Model name is required` after a successful install.
+
+**What `--network scholarly` opens.** In `pre-harbor verify` the scholarly
+preset (`SCHOLARLY_HOSTS` in `src/paper_review_harbor/emit.py`) allows the
+general scholarly sources — arXiv, Semantic Scholar, OpenAlex, Crossref, DOI —
+plus the Bohrium `bohr` CLI platform hosts (`bohr.dp.tech`,
+`bohrium.dp.tech`, `*.dp.tech`, `*.bohrium.com`) and Google Scholar
+(`scholar.google.com`), so agents that retrieve through `bohr`/Google Scholar
+are not blocked by the benchmark. `--network agent` leaves all of these out.
 
 ⚠️ **The switch lives in the run invocation, not in the task.** When collecting
 data, record whether each run had literature access alongside the review — an

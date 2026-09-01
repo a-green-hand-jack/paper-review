@@ -31,7 +31,7 @@ from pathlib import Path
 from jinja2 import Environment, FileSystemLoader, StrictUndefined
 
 from .ingest import IngestResult
-from .integrity import material_manifest, tree_digest
+from .integrity import material_manifest
 from .spec import TaskSpec
 
 TEMPLATES = Path(__file__).parent / "templates"
@@ -41,6 +41,13 @@ TEMPLATES = Path(__file__).parent / "templates"
 CANARY_NAMESPACE = uuid.UUID("6f1c2d3e-9a4b-5c6d-8e7f-0a1b2c3d4e5f")
 
 #: Suggested at run time via --allow-agent-host; not baked into the task.
+#:
+#: The general scholarly sources come first. The Bohrium and Google Scholar
+#: hosts exist so agents that retrieve through the Bohrium ``bohr`` CLI or by
+#: scraping Google Scholar (e.g. Open ScholarPeer) can run under
+#: ``--network scholarly`` without the benchmark blocking their literature
+#: sources; ``bohr`` is the Bohrium platform CLI (`@dptech-corp/bohr-cli`) and
+#: Google Scholar is served from ``scholar.google.com``.
 SCHOLARLY_HOSTS: tuple[str, ...] = (
     "arxiv.org",
     "export.arxiv.org",
@@ -48,6 +55,18 @@ SCHOLARLY_HOSTS: tuple[str, ...] = (
     "api.openalex.org",
     "api.crossref.org",
     "doi.org",
+    # Bohrium / bohr CLI
+    "bohr.dp.tech",
+    "bohrium.dp.tech",
+    "tiefblue.bohrium.dp.tech",
+    "vouch.dp.tech",
+    "wenyon.dp.tech",
+    "trisol.dp.tech",
+    "open.bohrium.com",
+    "platform.bohrium.com",
+    "www.bohrium.com",
+    # Google Scholar scraping
+    "scholar.google.com",
 )
 
 #: What Harbor's agent adapters need in order to install themselves.
@@ -154,10 +173,6 @@ def _write(path: Path, text: str, *, executable: bool = False) -> None:
         path.chmod(path.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
 
 
-def _protocol_tree_digest(root: Path) -> str:
-    return tree_digest(root)
-
-
 def emit_task(result: IngestResult, spec: TaskSpec, config: EmitConfig) -> Path:
     """Render one Harbor task from a staged paper version."""
     task_id = result.label
@@ -255,15 +270,6 @@ def emit_task(result: IngestResult, spec: TaskSpec, config: EmitConfig) -> Path:
                 "task_id": task_id,
                 "review_path": "review.md",
                 "min_review_chars": config.min_review_chars,
-                "paper_run_required_headings": [
-                    "## Review summary",
-                    "## Blocker findings",
-                    "## Major findings",
-                    "## Minor findings",
-                    "## Sound as written",
-                    "## Not assessable",
-                ],
-                "paper_run_task_source_digest": _protocol_tree_digest(result.root),
             },
             indent=2,
         )

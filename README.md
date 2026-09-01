@@ -20,9 +20,9 @@ the reproducible model-condition benchmark is documented in
 | **Harbor task generation** | Outputs `schema_version = "1.4"` tasks executable directly by `harbor run`, with `environment/` (TeX Live subset + agent toolchain), `solution/` (placeholder oracle), and an independent verifier container |
 | **Network modes** | `none` / `agent` / `scholarly` presets; the host allowlist applies to both the environment and agent phases |
 | **Verification** | `verify <label> --agent oracle` must score 1.0, `--agent nop` must score 0.0; without Docker on this machine it prints the exact Linux-box command instead of degrading into a weaker check |
-| **paper-run v0.5.0 review agent** | `pre-harbor verify --agent paper-run` integrates the OpenCode-native paper-run `review-report` plan, validates the fixed plan and required report headings, and archives `.paper-run/` state |
+| **Agent-agnostic benchmark** | The benchmark owns the task contract, not any specific review agent: run any Harbor agent (`harbor run --repo … --agent <id>`), archive each trial with `pre-harbor archive-trail` (see [`docs/BENCHMARK.md`](docs/BENCHMARK.md)) |
 | **Hugging Face publishing** | `publish` uploads to `Jack-Jieke-Wu/Paper-Reviewing-Exam`, re-audits before publishing, defaults to dry-run; `harbor run --repo` runs the published snapshot directly |
-| **Reproducible benchmark** | `pre-harbor benchmark` runs the six-task Issue #19 set against the built-in OSP review agent and archives every trail; benchmark your own agent with `harbor run --agent <id>` + `pre-harbor archive-trail` (see [`docs/BENCHMARK.md`](docs/BENCHMARK.md)) |
+| **Reproducible benchmark** | The six-task Issue #19 set is the canonical benchmark set; run it with any Harbor agent (`harbor run --repo … --agent <id>`) and archive every trail with `pre-harbor archive-trail` (see [`docs/BENCHMARK.md`](docs/BENCHMARK.md)) |
 | **opencode commands** | `/paper2task <label>` (stage → inspect → emit → audit) and `/verify-task <label>` (oracle + floor) |
 | **Corpus size** | Currently **27 papers, 31 reviewable versions** |
 
@@ -47,7 +47,6 @@ pre-harbor emit [labels...]     render tasks; audits each, deletes on leak
 pre-harbor audit                re-audit tasks on disk
 pre-harbor verify <label>       harbor run, or the command for a box with Docker
 pre-harbor publish --repo O/N   push to Hugging Face; dry run without --execute
-pre-harbor benchmark            run/archive one six-task Issue #19 model condition
 pre-harbor archive-trail        archive one Harbor run and optionally upload its trail
 ```
 
