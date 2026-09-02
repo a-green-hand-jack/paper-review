@@ -73,6 +73,10 @@ uvx --from git+https://github.com/a-green-hand-jack/paper-review-bench@v0.2.0 \
     --execute
 ```
 
+The `@v0.2.0` on the `uvx` line is the GitHub **code** tag (the `pre-harbor`
+version doing the archiving); `--task-revision` takes the **Exam dataset** SHA
+the run executed against. The two are unrelated despite the shared numbering.
+
 The archiver scrubs host-local paths, secret-looking values, and non-evidence
 runtime state locally, before anything is uploaded. Do not hand-assemble a trail
 directory and upload it yourself.

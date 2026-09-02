@@ -79,7 +79,11 @@ Relationship and flow:
    review content and are public — confirm you accept that exposure before
    uploading.
    Local `osp-trails/` is gitignored so it never enters the GitHub repository.
-3. **Version correspondence**: GitHub `v0.1.0` is the code version; Exam and
-   Trails are independent datasets that update with their own uploads rather
-   than automatically with GitHub tags. All three carry the `v0.1.0` tag to
-   mark the first-generation snapshot of the same benchmark (see `CHANGELOG.md`).
+3. **Version correspondence**: all three carry `vN.N.N` tags, and the numbers
+   collide without meaning the same thing. GitHub tags the code, Exam tags the
+   task snapshot, Trails tags the archived runs; each advances with its own
+   releases and uploads, never automatically with a GitHub tag. They were tagged
+   `v0.1.0` together to mark the first-generation snapshot of the same benchmark,
+   and all three currently sit at `v0.2.0` — but treat that as coincidence, not
+   correspondence. When a document names a tag, check which of the three it
+   belongs to (see `CHANGELOG.md` for the code line).

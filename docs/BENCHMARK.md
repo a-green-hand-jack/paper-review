@@ -50,6 +50,12 @@ provider credential — not the `papers/` corpus and not the build pipeline.
 
 The third row is maintainer work. Everything else runs from a bare directory.
 
+**Three separate things carry `vN.N.N` tags, and the numbers collide.** The
+GitHub repository tags the *code*; the `Paper-Reviewing-Exam` dataset tags the
+*task snapshot*; the `Paper-Reviewing-Exam-Trails` dataset tags the *archived
+runs*. They advance independently — a `v0.2.0` in one is unrelated to a `v0.2.0`
+in another. Below, every tag is named with the thing it belongs to.
+
 ## Prerequisites
 
 A Docker-capable Linux host:
@@ -77,8 +83,10 @@ of the task snapshot you want to benchmark — **not** a branch name, because
 `main` moves and a trail that cites it no longer identifies the bytes its review
 was written from.
 
-The current published snapshot (31 tasks, including all six benchmark tasks) is
-tagged `v0.2.0`:
+The current published snapshot (31 tasks, including all six benchmark tasks)
+carries the **Exam dataset's** `v0.2.0` tag — a Hugging Face tag on
+`Jack-Jieke-Wu/Paper-Reviewing-Exam`, unrelated to the GitHub code tag of the
+same name:
 
 ```text
 afc83f1c0e579852de9b2a075b259d7795cd09f0
@@ -182,11 +190,17 @@ uvx --from git+https://github.com/a-green-hand-jack/paper-review-bench@v0.2.0 \
     --execute
 ```
 
+The `@v0.2.0` here is the **GitHub code** tag — the version of `pre-harbor`
+doing the archiving. It is not the Exam tag: `--task-revision` still takes the
+exam SHA from [Getting the exam revision](#getting-the-exam-revision), and the
+two move independently.
+
 Pin the `@<tag>` so the trail schema your run produces is identifiable later;
 dropping it takes whatever the default branch happens to be. Use the newest tag
 in `git ls-remote --tags https://github.com/a-green-hand-jack/paper-review-bench`;
-trail archiving has produced schema `2` manifests since `v0.2.0`. Drop `--execute`
-first to archive locally under `trails/` and read what would be uploaded.
+trail archiving has produced schema `2` manifests since the code tag `v0.2.0`.
+Drop `--execute` first to archive locally under `trails/` and read what would be
+uploaded.
 
 Two things to know before running it:
 
