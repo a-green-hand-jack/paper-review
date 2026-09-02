@@ -35,15 +35,33 @@ Harbor reward in the trail manifests confirms only the submission contract (a
 and never becomes one — deciding quality is the job of the human experts who
 read the trails.
 
+## You do not need a checkout of this repository
+
+The published exam snapshot is self-contained: each task carries its own
+sanitized manuscript, material manifest, environment image, and verifier. To run
+the benchmark and contribute a trail you need Docker, Harbor, the `hf` CLI, and a
+provider credential — not the `papers/` corpus and not the build pipeline.
+
+| You want to | You need |
+|---|---|
+| Run the six tasks with your agent | Harbor + the exam revision SHA below |
+| Archive and upload the resulting trails | the above, plus `pre-harbor archive-trail` ([one command, no clone](#archiving-a-trail-without-a-checkout)) |
+| Add papers, change the task template, publish a new snapshot | a full checkout of this repository |
+
+The third row is maintainer work. Everything else runs from a bare directory.
+
 ## Prerequisites
 
-Run from a Docker-capable Linux checkout:
+A Docker-capable Linux host:
 
 ```bash
-uv run pre-harbor doctor          # says whether this machine can run Harbor
 harbor --version                  # Harbor 0.20.0
-hf auth whoami                    # must be signed in (publish + upload target)
+docker info                       # must succeed
+hf auth whoami                    # must be signed in (trail upload target)
 ```
+
+From a checkout, `uv run pre-harbor doctor` reports the same thing and names
+what has to move to a Linux box.
 
 You also need a provider endpoint (an OpenAI-compatible API) and its
 credential exported in the shell environment, e.g.:
@@ -55,9 +73,26 @@ export OPENAI_API_KEY=...         # the credential
 ## Getting the exam revision
 
 `--task-revision` must be the immutable 40-character Hugging Face commit SHA
-of the task snapshot you want to benchmark — not a branch name. Publish once,
-then copy the SHA that `pre-harbor publish` prints (`resolved immutable HF
-revision: ...`):
+of the task snapshot you want to benchmark — **not** a branch name, because
+`main` moves and a trail that cites it no longer identifies the bytes its review
+was written from.
+
+The current published snapshot (31 tasks, including all six benchmark tasks) is
+tagged `v0.2.0`:
+
+```text
+afc83f1c0e579852de9b2a075b259d7795cd09f0
+```
+
+Read the SHA behind any tag yourself rather than trusting a copy of it here:
+
+```bash
+hf repos tag list Jack-Jieke-Wu/Paper-Reviewing-Exam --repo-type dataset
+hf datasets info Jack-Jieke-Wu/Paper-Reviewing-Exam --revision main --format json
+```
+
+Maintainers publishing a new snapshot get the SHA from `pre-harbor publish`,
+which prints `resolved immutable HF revision: ...`:
 
 ```bash
 uv run pre-harbor publish --repo Jack-Jieke-Wu/Paper-Reviewing-Exam --execute
@@ -66,13 +101,13 @@ uv run pre-harbor publish --repo Jack-Jieke-Wu/Paper-Reviewing-Exam --execute
 ## Running one agent condition
 
 ```bash
-# 1) Publish (or reuse) the exam snapshot and export the credential:
-uv run pre-harbor publish --repo Jack-Jieke-Wu/Paper-Reviewing-Exam --execute
+# 1) Pick the exam revision (above) and export the credential:
+EXAM_SHA=afc83f1c0e579852de9b2a075b259d7795cd09f0
 export OPENAI_API_KEY=...
 
 # 2) Run Harbor directly with your agent on the pinned snapshot:
 harbor run \
-  --repo https://huggingface.co/datasets/Jack-Jieke-Wu/Paper-Reviewing-Exam/tree/<40-character-exam-sha>/paper-review-exam \
+  --repo https://huggingface.co/datasets/Jack-Jieke-Wu/Paper-Reviewing-Exam/tree/$EXAM_SHA/paper-review-exam \
   --agent <agent-id> \
   --model openai/gpt-5.6-sol \
   --jobs-dir jobs/<agent> \
@@ -94,10 +129,13 @@ harbor run \
 # 3) Archive and upload one trail per trial:
 uv run pre-harbor archive-trail jobs/<agent>/my-agent-run-1/<trial-dir> \
   --task-id <task-id> \
-  --task-revision <40-character-exam-sha> \
+  --task-revision "$EXAM_SHA" \
   --trail-repo Jack-Jieke-Wu/Paper-Reviewing-Exam-Trails \
   --execute
 ```
+
+Without a checkout, replace `uv run pre-harbor` in step 3 with the single command
+in [Archiving a trail without a checkout](#archiving-a-trail-without-a-checkout).
 
 The example allowlist is the minimum for the scholarly hosts the exam suggests
 (`arxiv.org`, `api.semanticscholar.org`, ...). Two rules from Harbor practice:
@@ -128,6 +166,39 @@ Three rules for this workflow:
   content — confirm you accept that exposure first.
 - Uploading is per trial. Keep the SHA and jobs layout identical across
   compared runs.
+
+## Archiving a trail without a checkout
+
+`pre-harbor archive-trail` is the one contributor step that still lives in the
+source repository, but it does not need a clone. It reads a Harbor trial
+directory and shells out to the `hf` CLI, so `uvx` can fetch and run it directly:
+
+```bash
+uvx --from git+https://github.com/a-green-hand-jack/paper-review-bench@v0.2.0 \
+  pre-harbor archive-trail jobs/<agent>/my-agent-run-1/<trial-dir> \
+    --task-id <task-id> \
+    --task-revision "$EXAM_SHA" \
+    --trail-repo Jack-Jieke-Wu/Paper-Reviewing-Exam-Trails \
+    --execute
+```
+
+Pin the `@<tag>` so the trail schema your run produces is identifiable later;
+dropping it takes whatever the default branch happens to be. Use the newest tag
+in `git ls-remote --tags https://github.com/a-green-hand-jack/paper-review-bench`;
+trail archiving has produced schema `2` manifests since `v0.2.0`. Drop `--execute`
+first to archive locally under `trails/` and read what would be uploaded.
+
+Two things to know before running it:
+
+- The scrub runs **here, on your machine, before the upload** — host-local paths,
+  secret-looking values, and non-evidence runtime state are removed as the trail
+  is assembled. Do not hand-assemble a trail directory and upload it yourself.
+- `--execute` publishes the review content to a public dataset. Confirm you
+  accept that exposure first.
+
+Needing `uvx` at all is a stopgap, not the design: the archiver is 399 lines of
+standard library and belongs with the tasks it archives. Tracked in
+[#21](https://github.com/a-green-hand-jack/paper-review-bench/issues/21).
 
 ## What gets archived in each trail
 

@@ -46,29 +46,36 @@ harbor-trails/<task-id>/<timestamp>/
 model / variant, Harbor version, reward, exception, network mode, allowed
 hosts, and a SHA-256 tree digest of the trail itself.
 
-Consult `benchmark-reports/<exam-revision>/` for the per-run report tables
-produced by `pre-harbor benchmark`.
-
 A legacy `osp-trails/` tree predates the Harbor pipeline and is retained for
 older runs; new runs upload under `harbor-trails/`.
 
 ## Producing trails
 
-Run the reproducible benchmark from the
+Producing a trail needs no checkout of the
 [`paper-review-bench`](https://github.com/a-green-hand-jack/paper-review-bench)
-GitHub repository:
+repository. Run the six benchmark tasks with any Harbor agent against a pinned
+`Paper-Reviewing-Exam` revision, then archive each trial:
 
 ```bash
-uv run pre-harbor benchmark \
-  --exam-revision <40-character-exam-sha> \
-  --model openai/gpt-5.6-sol \
-  --provider <provider-identity> \
-  --credential-env OPENAI_API_KEY \
-  --api-base-url https://<provider-host> \
-  --api-host <provider-host> \
-  --variant medium \
-  --execute
+harbor run \
+  --repo https://huggingface.co/datasets/Jack-Jieke-Wu/Paper-Reviewing-Exam/tree/<40-character-exam-sha>/paper-review-exam \
+  --agent <agent-id> --model openai/gpt-5.6-sol \
+  --jobs-dir jobs/<agent> --job-name my-agent-run-1 \
+  --no-delete --yes \
+  --artifact /workspace/material-manifest.json \
+  --include-task-name <task>            # once per benchmark task
+
+uvx --from git+https://github.com/a-green-hand-jack/paper-review-bench@v0.2.0 \
+  pre-harbor archive-trail jobs/<agent>/my-agent-run-1/<trial-dir> \
+    --task-id <task-id> \
+    --task-revision <40-character-exam-sha> \
+    --trail-repo Jack-Jieke-Wu/Paper-Reviewing-Exam-Trails \
+    --execute
 ```
+
+The archiver scrubs host-local paths, secret-looking values, and non-evidence
+runtime state locally, before anything is uploaded. Do not hand-assemble a trail
+directory and upload it yourself.
 
 See `docs/BENCHMARK.md` in the GitHub repository for the full contract:
 prerequisites, parameter validation, failure handling, result interpretation,

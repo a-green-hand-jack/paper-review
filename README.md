@@ -53,7 +53,7 @@ pre-harbor archive-trail        archive one Harbor run and optionally upload its
 ## Documentation
 
 - [`docs/PAPER2HARBOR.md`](docs/PAPER2HARBOR.md) — main pipeline doc: add a paper, build, prove, collect, publish, network details, privacy boundary, task layout, reward
-- [`docs/BENCHMARK.md`](docs/BENCHMARK.md) — how to run the reproducible benchmark (`pre-harbor benchmark`): prerequisites, commands, outputs, result interpretation
+- [`docs/BENCHMARK.md`](docs/BENCHMARK.md) — how to run the reproducible benchmark with any Harbor agent, without a checkout of this repository: prerequisites, the pinned exam revision, commands, outputs, result interpretation
 - `CHANGELOG.md` — release history
 
 ## Repositories and datasets
@@ -72,10 +72,12 @@ Relationship and flow:
    tasks generated from `papers/` to Exam. The tree is re-audited before
    publishing, and tasks are not "hard-coded" into the repository, so Exam
    snapshots are authoritative at their own git commit/tag.
-2. **Run → trail (Trails)**: `pre-harbor benchmark` (or
-   `pre-harbor archive-trail --trail-repo Jack-Jieke-Wu/Paper-Reviewing-Exam-Trails --execute`)
-   archives each review run's trail into Trails. Trails contain review content
-   and are public — confirm you accept that exposure before uploading.
+2. **Run → trail (Trails)**: `pre-harbor archive-trail --trail-repo
+   Jack-Jieke-Wu/Paper-Reviewing-Exam-Trails --execute` archives each review
+   run's trail into Trails; contributors without a checkout run the same command
+   through `uvx` (see [`docs/BENCHMARK.md`](docs/BENCHMARK.md)). Trails contain
+   review content and are public — confirm you accept that exposure before
+   uploading.
    Local `osp-trails/` is gitignored so it never enters the GitHub repository.
 3. **Version correspondence**: GitHub `v0.1.0` is the code version; Exam and
    Trails are independent datasets that update with their own uploads rather

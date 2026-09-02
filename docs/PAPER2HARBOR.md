@@ -16,9 +16,9 @@ human experts to assess later.
 
 Corpus today: **27 papers, 31 reviewable versions**, all published at
 [Paper-Reviewing-Exam](https://huggingface.co/datasets/Jack-Jieke-Wu/Paper-Reviewing-Exam).
-Run a complete model condition with
-[`pre-harbor benchmark`](BENCHMARK.md) and archive every trail to
-[Paper-Reviewing-Exam-Trails](https://huggingface.co/datasets/Jack-Jieke-Wu/Paper-Reviewing-Exam-Trails).
+Run a complete agent condition with `harbor run` and archive every trail to
+[Paper-Reviewing-Exam-Trails](https://huggingface.co/datasets/Jack-Jieke-Wu/Paper-Reviewing-Exam-Trails)
+— see [`BENCHMARK.md`](BENCHMARK.md), which needs no checkout of this repository.
 
 ## Storage and execution
 
@@ -373,7 +373,6 @@ pre-harbor emit [labels...]     render tasks; audits each, deletes on leak
 pre-harbor audit                re-audit tasks on disk
 pre-harbor verify <label>       harbor run, or the command for a box with Docker
 pre-harbor publish --repo O/N   push to Hugging Face; dry run without --execute
-pre-harbor benchmark            run/archive one six-task Issue #19 model condition
 pre-harbor archive-trail        archive one Harbor run and optionally upload its trail
 ```
 

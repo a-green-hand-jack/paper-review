@@ -34,6 +34,24 @@ and this project aims to follow Semantic Versioning.
   agents retrieving through `bohr`/Google Scholar run under
   `--network scholarly` without the benchmark blocking their literature
   sources.
+- **`docs/BENCHMARK.md` is written for a contributor without a checkout.** It
+  names the pinned exam revision (`v0.2.0`,
+  `afc83f1c0e579852de9b2a075b259d7795cd09f0`) instead of telling every reader to
+  publish one, splits the maintainer prerequisites from the run prerequisites,
+  and documents archiving a trail through `uvx --from git+...` so contributing a
+  run no longer requires cloning this repository. Decoupling that step properly
+  is tracked in
+  [#21](https://github.com/a-green-hand-jack/paper-review-bench/issues/21).
+- The `Paper-Reviewing-Exam-Trails` dataset card documents the same
+  no-checkout path for producing a trail.
+- `pyproject.toml` and `__version__` report `0.3.0`; both had been left at
+  `0.1.0` through two releases.
+
+### Fixed
+
+- Removed the last references to the deleted `pre-harbor benchmark` command from
+  `README.md`, `docs/PAPER2HARBOR.md`, and the Trails dataset card, which
+  documented an invocation that no longer exists.
 
 ## [v0.2.0] - 2026-09-01
 
