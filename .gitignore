@@ -36,6 +36,8 @@ AGENTS.md
 # Local private review trails and Python bytecode
 /osp-trails/
 /trails/
+#: Harbor run output: containers, agent logs, and provider responses.
+/jobs/
 __pycache__/
 
 # Python environment and tooling caches. uv writes a self-ignoring .gitignore

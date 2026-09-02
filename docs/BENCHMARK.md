@@ -295,3 +295,4 @@ single review's recommendation label. For a defensible comparison:
 - [`Paper-Reviewing-Exam`](https://huggingface.co/datasets/Jack-Jieke-Wu/Paper-Reviewing-Exam) — the runnable task snapshot this benchmark executes.
 - [`Paper-Reviewing-Exam-Trails`](https://huggingface.co/datasets/Jack-Jieke-Wu/Paper-Reviewing-Exam-Trails) — where every run's trail lands.
 - [`PAPER2HARBOR.md`](PAPER2HARBOR.md) — the full task pipeline (emit, verify, publish) and the network section.
+- [`RELEASING.md`](RELEASING.md) — the gate every release passes: one task, one real agent, against the published snapshot.

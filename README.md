@@ -54,6 +54,7 @@ pre-harbor archive-trail        archive one Harbor run and optionally upload its
 
 - [`docs/PAPER2HARBOR.md`](docs/PAPER2HARBOR.md) — main pipeline doc: add a paper, build, prove, collect, publish, network details, privacy boundary, task layout, reward
 - [`docs/BENCHMARK.md`](docs/BENCHMARK.md) — how to run the reproducible benchmark with any Harbor agent, without a checkout of this repository: prerequisites, the pinned exam revision, commands, outputs, result interpretation
+- [`docs/RELEASING.md`](docs/RELEASING.md) — the release gate: every release runs one task end to end with a real agent before it is announced
 - `CHANGELOG.md` — release history
 
 ## Repositories and datasets
