@@ -44,7 +44,9 @@ harbor-trails/<task-id>/<timestamp>/
 `trail-manifest.json` (schema `2`) records the task id, the exact
 `Paper-Reviewing-Exam` revision the run was executed against, the provider /
 model / variant, Harbor version, reward, exception, network mode, allowed
-hosts, and a SHA-256 tree digest of the trail itself.
+hosts, and a SHA-256 tree digest of the trail itself. Since archiver `v0.3.0` it
+also records an `archiver` block naming the build that did the copying and
+scrubbing; trails archived before that have no such block.
 
 A legacy `osp-trails/` tree predates the Harbor pipeline and is retained for
 older runs; new runs upload under `harbor-trails/`.
@@ -65,7 +67,7 @@ harbor run \
   --artifact /workspace/material-manifest.json \
   --include-task-name <task>            # once per benchmark task
 
-uvx --from git+https://github.com/a-green-hand-jack/paper-review-bench@v0.2.0 \
+uvx --from git+https://github.com/a-green-hand-jack/paper-review-bench@v0.3.0 \
   pre-harbor archive-trail jobs/<agent>/my-agent-run-1/<trial-dir> \
     --task-id <task-id> \
     --task-revision <40-character-exam-sha> \
@@ -73,7 +75,7 @@ uvx --from git+https://github.com/a-green-hand-jack/paper-review-bench@v0.2.0 \
     --execute
 ```
 
-The `@v0.2.0` on the `uvx` line is the GitHub **code** tag (the `pre-harbor`
+The `@v0.3.0` on the `uvx` line is the GitHub **code** tag (the `pre-harbor`
 version doing the archiving); `--task-revision` takes the **Exam dataset** SHA
 the run executed against. The two are unrelated despite the shared numbering.
 

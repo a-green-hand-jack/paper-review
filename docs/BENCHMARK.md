@@ -182,7 +182,7 @@ source repository, but it does not need a clone. It reads a Harbor trial
 directory and shells out to the `hf` CLI, so `uvx` can fetch and run it directly:
 
 ```bash
-uvx --from git+https://github.com/a-green-hand-jack/paper-review-bench@v0.2.0 \
+uvx --from git+https://github.com/a-green-hand-jack/paper-review-bench@v0.3.0 \
   pre-harbor archive-trail jobs/<agent>/my-agent-run-1/<trial-dir> \
     --task-id <task-id> \
     --task-revision "$EXAM_SHA" \
@@ -190,7 +190,7 @@ uvx --from git+https://github.com/a-green-hand-jack/paper-review-bench@v0.2.0 \
     --execute
 ```
 
-The `@v0.2.0` here is the **GitHub code** tag — the version of `pre-harbor`
+The `@v0.3.0` here is the **GitHub code** tag — the version of `pre-harbor`
 doing the archiving. It is not the Exam tag: `--task-revision` still takes the
 exam SHA from [Getting the exam revision](#getting-the-exam-revision), and the
 two move independently.
@@ -198,7 +198,8 @@ two move independently.
 Pin the `@<tag>` so the trail schema your run produces is identifiable later;
 dropping it takes whatever the default branch happens to be. Use the newest tag
 in `git ls-remote --tags https://github.com/a-green-hand-jack/paper-review-bench`;
-trail archiving has produced schema `2` manifests since the code tag `v0.2.0`.
+trail archiving has produced schema `2` manifests since the code tag `v0.2.0`,
+and records the archiver build itself since `v0.3.0`.
 Drop `--execute` first to archive locally under `trails/` and read what would be
 uploaded.
 
@@ -220,9 +221,36 @@ standard library and belongs with the tasks it archives. Tracked in
 
 ```text
 task_id, task_revision (the exam SHA), run_id, archived_at,
-source_layout, complete_review, digest_scope, tree_sha256, files,
+source_layout, archiver, complete_review, digest_scope, tree_sha256, files,
 metadata (agent-provided fields, scrubbed)
 ```
+
+`archiver` names the build that did the copying and scrubbing, which is a
+different question from `schema_version` — that describes the manifest format,
+not the code that wrote it:
+
+```json
+"archiver": {
+  "name": "paper-review-harbor",
+  "version": "0.3.0",
+  "source": {
+    "kind": "vcs",
+    "commit": "ec0ebd3d0aa03aab396a78d25dc15ddb746e5c98",
+    "requested_revision": "v0.3.0",
+    "url": "https://github.com/a-green-hand-jack/paper-review-bench"
+  }
+}
+```
+
+`kind` is `vcs` when the archiver came from a pinned `uvx --from git+...` install
+— the case the command above produces, and the only one that ties a trail to a
+published commit. `local-checkout` (a maintainer's tree, with a `dirty` flag) and
+`release` are also recorded, and `archive-trail` prints a warning on stderr for
+anything that is not a pinned `vcs` install. A local checkout reports its commit
+but never its path, which would name the contributor's machine.
+
+Trails archived before `v0.3.0` have no `archiver` block; read a missing one as
+unknown, not as an error.
 
 The archived trail copies the review, `config.json`/`lock.json`, the material
 manifest, agent artifacts, agent logs, and verifier output — scrubbed of

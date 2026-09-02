@@ -4,6 +4,7 @@ import json
 
 import pytest
 
+from paper_review_harbor import provenance
 from paper_review_harbor.trail import (
     TrailError,
     archive_harbor_trial,
@@ -118,3 +119,98 @@ def test_archive_harbor_trial_skips_binary_runtime_state(tmp_path) -> None:
     assert not (trail / "agent" / "opencode.txt").exists()
     # Text logs at the agent root are still archived.
     assert (trail / "agent" / "agent-summary.txt").is_file()
+
+
+def test_manifest_records_the_archiver(tmp_path) -> None:
+    trial = tmp_path / "trial"
+    review = trial / "artifacts" / "workspace" / "submission" / "review.md"
+    review.parent.mkdir(parents=True)
+    review.write_text("review")
+    trail = archive_harbor_trial(trial, tmp_path / "trails", task_id="t", task_revision="abc")
+    archiver = json.loads((trail / "trail-manifest.json").read_text())["archiver"]
+    assert archiver["name"] == "paper-review-harbor"
+    assert archiver["version"]
+    assert archiver["source"]["kind"]
+
+
+def test_manifest_archiver_never_names_the_host(tmp_path, monkeypatch) -> None:
+    """An editable install records its own filesystem path in PEP 610 metadata.
+
+    That path names the contributor's machine, which is the exact class of
+    detail this module strips everywhere else.
+    """
+    monkeypatch.setattr(
+        provenance,
+        "_direct_url",
+        lambda: {"url": "file:///home/someone/secret-project", "dir_info": {"editable": True}},
+    )
+    source = provenance.archiver_source()
+    assert "secret-project" not in json.dumps(source)
+    assert "url" not in source
+
+
+def test_vcs_install_is_traceable_to_a_commit(monkeypatch) -> None:
+    monkeypatch.setattr(
+        provenance,
+        "_direct_url",
+        lambda: {
+            "url": "https://github.com/a-green-hand-jack/paper-review-bench",
+            "vcs_info": {"vcs": "git", "commit_id": "e" * 40, "requested_revision": "v0.2.0"},
+        },
+    )
+    source = provenance.archiver_source()
+    assert source == {
+        "kind": "vcs",
+        "commit": "e" * 40,
+        "requested_revision": "v0.2.0",
+        "url": "https://github.com/a-green-hand-jack/paper-review-bench",
+    }
+    assert provenance.provenance_warnings({"source": source}) == []
+
+
+def test_unpinned_vcs_install_warns(monkeypatch) -> None:
+    monkeypatch.setattr(
+        provenance,
+        "_direct_url",
+        lambda: {
+            "url": "https://github.com/a-green-hand-jack/paper-review-bench",
+            "vcs_info": {"vcs": "git", "commit_id": "f" * 40, "requested_revision": None},
+        },
+    )
+    warnings = provenance.provenance_warnings({"source": provenance.archiver_source()})
+    assert any("pin" in warning for warning in warnings)
+
+
+def test_local_checkout_warns_and_reports_dirt(monkeypatch) -> None:
+    monkeypatch.setattr(provenance, "_direct_url", lambda: None)
+    monkeypatch.setattr(
+        provenance,
+        "_git",
+        lambda directory, *args: "a" * 40 if args[0] == "rev-parse" else " M src/x.py",
+    )
+    source = provenance.archiver_source()
+    assert source == {"kind": "local-checkout", "commit": "a" * 40, "dirty": True}
+    warnings = provenance.provenance_warnings({"source": source})
+    assert any("uncommitted" in warning for warning in warnings)
+
+
+def test_provenance_survives_git_being_unavailable(monkeypatch) -> None:
+    """Archiving a finished run must not fail because provenance is unknown."""
+    monkeypatch.setattr(provenance, "_direct_url", lambda: None)
+    monkeypatch.setattr(provenance, "_git", lambda directory, *args: None)
+    source = provenance.archiver_source()
+    assert source == {"kind": "release"}
+    assert provenance.provenance_warnings({"source": source})
+
+
+def test_unreadable_dirty_state_is_not_reported_as_clean(monkeypatch) -> None:
+    monkeypatch.setattr(provenance, "_direct_url", lambda: None)
+    monkeypatch.setattr(
+        provenance,
+        "_git",
+        lambda directory, *args: "b" * 40 if args[0] == "rev-parse" else None,
+    )
+    source = provenance.archiver_source()
+    assert source["dirty"] is None
+    warnings = provenance.provenance_warnings({"source": source})
+    assert any("could not be determined" in warning for warning in warnings)

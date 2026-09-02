@@ -30,6 +30,7 @@ from .emit import (
 )
 from .ingest import ingest
 from .manifest import row_for, write_manifest
+from .provenance import archiver_provenance, provenance_warnings
 from .publish import PublishError, create_tag, plan_publish, read_manifest, render_readme, upload
 from .spec import SpecError, TaskSpec, load_spec, spec_path
 from .trail import TrailError, archive_harbor_trial, upload_trail
@@ -325,6 +326,11 @@ def archive_trail_command(
     try:
         trail = archive_harbor_trial(run_dir, trails, task_id=task_id, task_revision=task_revision)
         typer.echo(f"archived {trail}")
+        # A trail that cannot name the build that wrote it is still worth
+        # keeping -- but the contributor should hear about it now, not when
+        # someone else tries to reproduce the scrub.
+        for warning in provenance_warnings(archiver_provenance()):
+            typer.echo(f"warning: {warning}", err=True)
         if trail_repo:
             command = upload_trail(trail, trail_repo, revision=revision, execute=execute)
             typer.echo(command if not execute else f"uploaded to {trail_repo}")

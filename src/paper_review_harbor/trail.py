@@ -10,6 +10,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from .integrity import file_inventory, tree_digest
+from .provenance import archiver_provenance
 
 
 class TrailError(RuntimeError):
@@ -152,6 +153,7 @@ def archive_trail(
         "task_revision": task_revision,
         "run_id": target.name,
         "archived_at": datetime.now(UTC).isoformat(),
+        "archiver": archiver_provenance(),
         "digest_scope": "all files except trail-manifest.json",
         "tree_sha256": tree_digest(target),
         "files": file_inventory(target),
@@ -242,6 +244,10 @@ def archive_harbor_trial(
         "run_id": target.name,
         "archived_at": datetime.now(UTC).isoformat(),
         "source_layout": "harbor-0.20-trial",
+        # Which build did the copying and scrubbing. A reader comparing trails
+        # from several contributors needs this; schema_version describes the
+        # manifest format, not the archiver.
+        "archiver": archiver_provenance(),
         "complete_review": complete_review,
         "digest_scope": "all files except trail-manifest.json",
         "tree_sha256": tree_digest(target),

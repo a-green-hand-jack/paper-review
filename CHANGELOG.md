@@ -7,6 +7,24 @@ and this project aims to follow Semantic Versioning.
 
 ## [v0.3.0] - 2026-09-02
 
+### Added
+
+- **Every trail manifest records the archiver that produced it** (`archiver`
+  block: name, version, and source). `schema_version` describes the manifest
+  format, not the build that wrote it, so two trails both saying `2` could have
+  been scrubbed by different code. Now the manifest says which. A pinned
+  `uvx --from git+...@<tag>` install is reported as `kind: "vcs"` with the
+  resolved commit and requested revision, read from PEP 610 metadata; a
+  maintainer's tree is `local-checkout` with a `dirty` flag; anything else is
+  `release` or `unknown`. `pre-harbor archive-trail` warns on stderr for
+  anything that is not a pinned `vcs` install (`src/paper_review_harbor/provenance.py`).
+  Resolves
+  [#22](https://github.com/a-green-hand-jack/paper-review-bench/issues/22).
+- A local checkout reports its commit but **never its filesystem path**: PEP 610
+  records an editable install's own directory, which names the contributor's
+  machine — the class of detail trail archiving exists to strip. Covered by a
+  regression test.
+
 ### Removed
 
 - **Built-in paper-review agents.** The benchmark no longer maintains specific
