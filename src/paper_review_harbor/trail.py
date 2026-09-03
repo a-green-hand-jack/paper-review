@@ -111,6 +111,17 @@ def _copy_tree_checked(
         _copy_checked(path, destination / relative, root)
 
 
+def _source_record_id(material_manifest: Path) -> str | None:
+    """Read the stable source link from a task material manifest when present."""
+    try:
+        payload = json.loads(material_manifest.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError):
+        return None
+    source = payload.get("source") if isinstance(payload, dict) else None
+    record_id = source.get("record_id") if isinstance(source, dict) else None
+    return record_id if isinstance(record_id, str) and record_id else None
+
+
 def archive_trail(
     run_dir: Path,
     destination_root: Path,
@@ -138,6 +149,9 @@ def archive_trail(
     target.mkdir(parents=True)
     review = run_dir / "workspace" / "submission" / "review.md"
     _copy_checked(review, target / "review.md", run_dir)
+    review_json = run_dir / "workspace" / "submission" / "review.json"
+    if review_json.is_file():
+        _copy_checked(review_json, target / "review.json", run_dir)
     optional = {
         "reward.json": run_dir / "reward.json",
         "submission-report.json": run_dir / "logs" / "verifier" / "submission-report.json",
@@ -148,7 +162,7 @@ def archive_trail(
         if source.exists():
             _copy_checked(source, target / destination_name, run_dir)
     manifest = {
-        "schema_version": 1,
+        "schema_version": 2,
         "task_id": task_id,
         "task_revision": task_revision,
         "run_id": target.name,
@@ -157,6 +171,7 @@ def archive_trail(
         "digest_scope": "all files except trail-manifest.json",
         "tree_sha256": tree_digest(target),
         "files": file_inventory(target),
+        "source_record_id": _source_record_id(run_dir / "input-manifest.json"),
         "metadata": metadata or {},
     }
     (target / "trail-manifest.json").write_text(
@@ -200,6 +215,10 @@ def archive_harbor_trial(
     complete_review = review.is_file()
     if complete_review:
         _copy_checked(review, target / "review.md", trial_dir)
+    review_json = trial_dir / "artifacts" / "workspace" / "submission" / "review.json"
+    complete_structured_review = review_json.is_file()
+    if complete_structured_review:
+        _copy_checked(review_json, target / "review.json", trial_dir)
     required = {
         "config.json": trial_dir / "config.json",
         "lock.json": trial_dir / "lock.json",
@@ -238,7 +257,7 @@ def archive_harbor_trial(
             )
 
     manifest = {
-        "schema_version": 2,
+        "schema_version": 3,
         "task_id": task_id,
         "task_revision": task_revision,
         "run_id": target.name,
@@ -249,6 +268,10 @@ def archive_harbor_trial(
         # manifest format, not the archiver.
         "archiver": archiver_provenance(),
         "complete_review": complete_review,
+        "complete_structured_review": complete_structured_review,
+        "source_record_id": _source_record_id(
+            trial_dir / "artifacts" / "workspace" / "material-manifest.json"
+        ),
         "digest_scope": "all files except trail-manifest.json",
         "tree_sha256": tree_digest(target),
         "files": file_inventory(target),

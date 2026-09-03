@@ -59,9 +59,9 @@ uv run pre-harbor archive-trail jobs/smoke/<job>/<trial-dir> \
 ## What counts as a pass
 
 - [ ] Harbor produces one trial record for the selected task.
-- [ ] Reward is `1.0` — a substantive `review.md` was submitted.
+- [ ] Reward is `1.0` — a substantive `review.md` and valid `review.json` were submitted.
 - [ ] `exception` is empty.
-- [ ] The archived trail contains `review.md`, the material manifest, and
+- [ ] The archived trail contains both review files, the material manifest, and
       verifier output.
 - [ ] The trail manifest's `archiver.source.kind` is what you expect for how you
       invoked it (`local-checkout` from a maintainer tree, `vcs` via `uvx`).
@@ -82,6 +82,9 @@ date. That issue stays open across releases; it is the log, not a task to close.
 
 1. Update `CHANGELOG.md`; keep `pyproject.toml` and `__version__` in step.
 2. Tag and push (`git tag -a vN.N.N`), then `gh release create`.
-3. If tasks changed, `pre-harbor publish --execute` and record the resolved
+3. If sources changed, build and inspect the restricted Source Archive before
+   its separate private release; record the source registry revision.
+4. If tasks changed, `pre-harbor publish --execute` and record the resolved
    immutable SHA — the smoke test must have run against that same snapshot.
-4. Update the `@vN.N.N` pins in `docs/BENCHMARK.md` and the Trails dataset card.
+5. Update the relevant dataset cards. Do not copy a mutable "current" revision
+   into benchmark instructions; resolve the intended immutable Exam SHA instead.

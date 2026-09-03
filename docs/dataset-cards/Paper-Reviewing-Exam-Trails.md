@@ -13,7 +13,7 @@ tags:
 
 Review-run trail archive for the
 [`Paper-Reviewing-Exam`](https://huggingface.co/datasets/Jack-Jieke-Wu/Paper-Reviewing-Exam)
-benchmark. Each trail captures one agent review run: the submitted `review.md`,
+benchmark. Each trail captures one agent review run: the submitted `review.md` and `review.json`,
 the agent's `brain/`, manifests, logs, and verifier output, so a human expert
 can assess the review against the exact materials it was written from.
 
@@ -24,7 +24,7 @@ before running with an upload flag.
 ## Why reviews are collected here
 
 The benchmark does not grade reviews. Harbor reward records only that a
-substantive `review.md` was submitted. Deciding whether a review is good is the
+substantive `review.md` and valid `review.json` were submitted. Deciding whether a review is good is the
 job of human experts, and this dataset is the durable record they read.
 
 ## Layout
@@ -32,6 +32,7 @@ job of human experts, and this dataset is the durable record they read.
 ```text
 harbor-trails/<task-id>/<timestamp>/
     review.md
+    review.json
     trail-manifest.json
     config.json
     lock.json
@@ -41,12 +42,14 @@ harbor-trails/<task-id>/<timestamp>/
     verifier/               verifier output (reward.json, submission-report.json)
 ```
 
-`trail-manifest.json` (schema `2`) records the task id, the exact
+`trail-manifest.json` (schema `3`) records the task id, the exact
 `Paper-Reviewing-Exam` revision the run was executed against, the provider /
 model / variant, Harbor version, reward, exception, network mode, allowed
 hosts, and a SHA-256 tree digest of the trail itself. Since archiver `v0.3.0` it
 also records an `archiver` block naming the build that did the copying and
-scrubbing; trails archived before that have no such block.
+scrubbing. New trails additionally carry `source_record_id`, which joins the
+run to the restricted PaperBench Source Archive. Older trails may not have
+either field and remain readable as legacy evidence.
 
 A legacy `osp-trails/` tree predates the Harbor pipeline and is retained for
 older runs; new runs upload under `harbor-trails/`.
@@ -90,4 +93,5 @@ and noise-aware comparison.
 ## Related
 
 - [`Paper-Reviewing-Exam`](https://huggingface.co/datasets/Jack-Jieke-Wu/Paper-Reviewing-Exam) — the runnable task snapshot these trails execute.
+- `PaperBench-Source-Archive` — restricted original inputs and source registry linked by `source_record_id`.
 - [`paper-review-bench`](https://github.com/a-green-hand-jack/paper-review-bench) — the source repository (code, corpus, docs).

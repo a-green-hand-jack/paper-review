@@ -46,6 +46,7 @@ REQUIRED_FILES = (
     "tests/Dockerfile",
     "tests/test.sh",
     "tests/check_submission.py",
+    "tests/review_contract.py",
     "tests/contract.json",
 )
 COMPILED_PDF_RE = re.compile(r"and `([^`]+)` as the compiled PDF")

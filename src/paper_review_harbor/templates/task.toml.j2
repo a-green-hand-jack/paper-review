@@ -25,6 +25,7 @@ task_id = "{{ task_id | toml }}"
 domain = "{{ domain | toml }}"
 paper_kind = "{{ paper_kind | toml }}"
 source_sha256 = "{{ source_sha256 | toml }}"
+source_record_id = "{{ source_record_id | toml }}"
 main_tex = "{{ main_tex | toml }}"
 tex_lines = {{ tex_lines }}
 n_sections = {{ n_sections }}
@@ -32,7 +33,7 @@ n_citations = {{ n_citations }}
 category = "scientific-review"
 difficulty_explanation = "Reviewing a manuscript end to end requires reading the whole argument, checking what is claimed against what is established, and reporting it usefully. This task collects the review; it does not judge it."
 solution_explanation = "There is no reference review. The oracle writes a placeholder that satisfies the submission contract, which proves the submission path works and nothing more."
-verification_explanation = "The verifier checks only that review.md exists and is substantive. Assessing review quality is done afterwards, by human experts, on the collected data."
+verification_explanation = "The verifier checks that review.md is substantive and review.json follows the structured schema. Assessing review quality is done afterwards, by human experts, on controlled evaluation data."
 
 [agent]
 timeout_sec = {{ agent_timeout_sec }}
