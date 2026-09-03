@@ -31,6 +31,31 @@ Exam snapshot. The task `instruction.md` asks the agent to read the manuscript
 and write both review files; the verifier checks a substantive Markdown review
 and a valid structured JSON companion.
 
+## Fast smoke task
+
+`hello_world_review` is a short, synthetic manuscript for rapid end-to-end
+feedback while changing the task pipeline. It travels through the same corpus
+discovery, ingestion, emission, audit, published-snapshot fetch, Harbor
+environment, agent submission, verifier, and local-trail paths as a normal
+task; it does not use a mock verifier or a special execution path.
+
+Use the normal Codex condition below with only this selector:
+
+```bash
+--include-task-name hello_world_review
+```
+
+The task sets a five-minute agent timeout. Record cold- and warm-start trial
+times when using it as a smoke test. It is deliberately excluded from the
+six-task Issue #19 benchmark set, must not be used to compare review quality,
+and should not be uploaded to the public Trails dataset by default.
+
+A passing smoke run establishes the shared runtime and submission contract. It
+does **not** establish that every real paper's materials or instructions are
+correct: keep the full generation, material-integrity, contract, and
+determinism checks over the complete corpus, and retain the real-task release
+gate below.
+
 Harbor reward in the trail manifests confirms only the submission contract (a
 substantive `review.md` and valid `review.json`). It is not a review-quality score
 and never becomes one — deciding quality is the job of the human experts who
@@ -123,6 +148,7 @@ harbor run \
   --include-task-name trapping_centers_superfluid_mott_insulator \
   --artifact /workspace/material-manifest.json \
   --agent-env CODEX_FORCE_AUTH_JSON=true \
+  --agent-env METHOD=script \
   --allow-agent-host chatgpt.com \
   --allow-agent-host auth.openai.com \
   --allow-agent-host api.openai.com \
@@ -148,7 +174,9 @@ The example allowlist is the minimum for the scholarly hosts the exam suggests
 - The allowlist flags matter at **environment start**, not only during the
   agent phase: Harbor installs hosted agents at run time, so the install itself
   needs network and the provider host must be allowed. Codex also needs both
-  `github.com` and `*.github.com` during its nvm bootstrap. Add each provider
+  `github.com` and `*.github.com` in the agent preset; use
+  `--agent-env METHOD=script` so NVM bootstraps from the already allowlisted
+  raw host instead of relying on an interactive Git clone. Add each provider
   endpoint at both phases if it is not already in the launch environment.
 - `--network scholarly` in `pre-harbor verify` (or the equivalent manual
   allowlist) opens the general scholarly sources **plus** the Bohrium `bohr`

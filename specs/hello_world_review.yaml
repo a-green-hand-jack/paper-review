@@ -1,0 +1,14 @@
+label: hello_world_review
+title: A Minimal Manuscript for Exercising the Paper Review Contract
+venue: paper-review-bench
+domain: mathematics
+paper_kind: synthetic smoke test
+paper_license: MIT
+source_access: public
+collection_workflow: paper-review-bench issue 26
+build_workflow: paper-review-harbor
+agent_timeout_sec: 300
+notes: |
+  This is a deliberately short synthetic manuscript used to exercise the
+  full paper-review task contract. Review it as submitted and base every
+  observation on the supplied material.

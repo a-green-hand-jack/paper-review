@@ -20,7 +20,7 @@ from paper_review_harbor.emit import (
     toml_escape,
 )
 from paper_review_harbor.ingest import ingest
-from paper_review_harbor.spec import TaskSpec
+from paper_review_harbor.spec import TaskSpec, load_spec
 
 
 def spec_for(label: str) -> TaskSpec:
@@ -176,6 +176,26 @@ class TestEmit:
         data = tomllib.loads((task_dir / "task.toml").read_text(encoding="utf-8"))
         assert data["metadata"]["domain"] == "unknown"
         assert audit_task(task_dir, version) == []
+
+    def test_hello_world_review_uses_the_normal_emitter_and_audit_path(
+        self, real_papers: Path, repo_root: Path, tmp_path: Path
+    ) -> None:
+        (version,) = discover_paper(real_papers / "hello_world_review")
+        spec = load_spec(repo_root / "specs", version.label)
+        task_dir = emit_task(
+            ingest(version, tmp_path / "build"),
+            spec,
+            EmitConfig(tasks_root=tmp_path / "tasks"),
+        )
+
+        data = tomllib.loads((task_dir / "task.toml").read_text(encoding="utf-8"))
+        assert data["task"]["name"] == "paper-reviewing-exam/hello_world_review"
+        assert data["agent"]["timeout_sec"] == 300
+        assert (task_dir / "environment" / "paper" / "main.tex").is_file()
+        assert (task_dir / "environment" / "paper" / "paper.pdf").is_file()
+        assert "`paper.pdf` as the compiled PDF" in (task_dir / "instruction.md").read_text()
+        assert audit_task(task_dir, version) == []
+
 
 class TestAuditPasses:
     def test_clean_task_has_no_violations(self, emitted) -> None:

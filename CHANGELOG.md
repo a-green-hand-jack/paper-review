@@ -5,6 +5,21 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project aims to follow Semantic Versioning.
 
+## [Unreleased]
+
+### Added
+
+- `hello_world_review`, a short, source-backed synthetic manuscript that uses
+  the ordinary `discover -> ingest -> emit -> audit` pipeline for rapid Harbor
+  and Codex smoke tests. It is excluded from the six-task benchmark, review
+  quality comparisons, public Trail uploads, and the real-task release gate.
+
+### Changed
+
+- A `TaskSpec` may set a positive per-task `agent_timeout_sec`. The Hello World
+  smoke task uses a five-minute bound while normal review tasks retain the
+  default one-hour limit.
+
 ## [v0.3.0] - 2026-09-02
 
 ### Added

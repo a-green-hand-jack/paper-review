@@ -26,7 +26,8 @@ the reproducible model-condition benchmark is documented in
 | **Hugging Face publishing** | `publish` uploads to `Jack-Jieke-Wu/Paper-Reviewing-Exam`, re-audits before publishing, defaults to dry-run; `harbor run --repo` runs the published snapshot directly |
 | **Reproducible benchmark** | The six-task Issue #19 set is the canonical benchmark set; run it with any Harbor agent (`harbor run --repo … --agent <id>`) and archive every trail with `pre-harbor archive-trail` (see [`docs/BENCHMARK.md`](docs/BENCHMARK.md)) |
 | **opencode commands** | `/paper2task <label>` (stage → inspect → emit → audit) and `/verify-task <label>` (oracle + floor) |
-| **Corpus size** | Currently **27 papers, 31 reviewable versions** |
+| **Fast smoke task** | `hello_world_review` is a short synthetic manuscript that exercises the normal emitted Harbor task and submission path; it is excluded from the six-task benchmark and real-task release gate |
+| **Corpus size** | Currently **28 papers, 32 reviewable versions** |
 
 ## Quick start
 

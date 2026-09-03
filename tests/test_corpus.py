@@ -131,6 +131,17 @@ def test_every_corpus_directory_yields_at_least_one_version(real_papers: Path) -
     assert all(v.source.exists() for v in versions)
 
 
+def test_hello_world_review_is_a_complete_source_backed_smoke_manuscript(
+    real_papers: Path,
+) -> None:
+    (version,) = discover_paper(real_papers / "hello_world_review")
+    assert version.label == "hello_world_review"
+    assert version.source_kind == "texfile"
+    assert version.pdf is not None
+    assert version.pdf.name == "main.pdf"
+    assert version.pdf.read_bytes().startswith(b"%PDF-")
+
+
 def test_multi_version_papers_keep_their_ordering(real_papers: Path) -> None:
     """Version labels sort as versions, so `--v10` would not precede `--v2`."""
     by_slug: dict[str, list[str]] = {}

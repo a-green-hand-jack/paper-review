@@ -7,6 +7,7 @@ import pytest
 from paper_review_harbor import provenance
 from paper_review_harbor.trail import (
     TrailError,
+    _source_record_id,
     archive_harbor_trial,
     archive_trail,
     upload_trail,
@@ -71,6 +72,15 @@ def test_archive_harbor_trial_keeps_required_provenance_and_brain(tmp_path) -> N
     manifest = json.loads((trail / "trail-manifest.json").read_text())
     assert manifest["source_record_id"] == "prb-task-0123456789abcdef"
     assert manifest["complete_structured_review"]
+
+
+def test_source_record_id_survives_a_redacted_harbor_artifact(tmp_path) -> None:
+    manifest = tmp_path / "material-manifest.json"
+    manifest.write_text(
+        '{"source":{"record_id":"prb-task-0123456789abcdef"},"lfs_hydrated":[REDACTED]}'
+    )
+
+    assert _source_record_id(manifest) == "prb-task-0123456789abcdef"
 
 
 def test_archive_harbor_trial_rejects_secret_metadata(tmp_path) -> None:

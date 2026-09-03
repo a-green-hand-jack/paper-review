@@ -30,6 +30,11 @@ SECRET_RE = re.compile(
 )
 
 
+SOURCE_RECORD_ID_RE = re.compile(
+    r'"source"\s*:\s*\{(?:(?!\}).)*?"record_id"\s*:\s*"([^"\r\n]+)"', re.DOTALL
+)
+
+
 def _safe_regular_file(path: Path, root: Path) -> bool:
     if not path.is_file() or path.is_symlink():
         return False
@@ -114,9 +119,16 @@ def _copy_tree_checked(
 def _source_record_id(material_manifest: Path) -> str | None:
     """Read the stable source link from a task material manifest when present."""
     try:
-        payload = json.loads(material_manifest.read_text(encoding="utf-8"))
-    except (OSError, UnicodeError, json.JSONDecodeError):
+        source_text = material_manifest.read_text(encoding="utf-8")
+    except (OSError, UnicodeError):
         return None
+    try:
+        payload = json.loads(source_text)
+    except json.JSONDecodeError:
+        # Harbor can redact boolean values in an exported JSON artifact, leaving
+        # the provenance object intact but making the whole file unparsable.
+        match = SOURCE_RECORD_ID_RE.search(source_text)
+        return match.group(1) if match else None
     source = payload.get("source") if isinstance(payload, dict) else None
     record_id = source.get("record_id") if isinstance(source, dict) else None
     return record_id if isinstance(record_id, str) and record_id else None
