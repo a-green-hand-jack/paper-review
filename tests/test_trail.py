@@ -92,7 +92,7 @@ def test_archive_harbor_trial_rejects_secret_metadata(tmp_path) -> None:
         )
 
 
-def test_archive_harbor_trial_skips_binary_runtime_state(tmp_path) -> None:
+def test_archive_harbor_trial_skips_runtime_state_and_raw_agent_logs(tmp_path) -> None:
     trial = tmp_path / "trial"
     review = trial / "artifacts" / "workspace" / "submission" / "review.md"
     review.parent.mkdir(parents=True)
@@ -111,19 +111,26 @@ def test_archive_harbor_trial_skips_binary_runtime_state(tmp_path) -> None:
     (xdg / "hooks" / "fsmonitor-watchman.sample").write_text(
         "example hook script to integrate Watchman\n"
     )
-    # A real text agent log outside the runtime state must be archived, but the
-    # raw stdout tee (opencode.txt) is skipped: it can carry provider metadata
-    # (e.g. encrypted reasoning fields) that the secret regex cannot classify.
+    # Raw agent logs and Codex session state may carry provider metadata or
+    # credentials. The normalized trajectory remains the archiveable evidence.
     agent_root = trial / "agent"
     (agent_root / "opencode.txt").write_text(
         '{"reasoningEncryptedContent":"gAAAAABqlyJ7BKBaQqpQbrIgFA0sK-LXqJC_WE3idu"}\n'
     )
+    (agent_root / "codex.txt").write_text(
+        "authorization: Bearer sk-abcdefghijklmnopqrst\n"
+    )
+    codex_session = agent_root / "sessions" / "2026" / "09" / "run.jsonl"
+    codex_session.parent.mkdir(parents=True)
+    codex_session.write_text('{"token":"sk-abcdefghijklmnopqrst"}\n')
     (agent_root / "agent-summary.txt").write_text("structured agent summary\n")
     trail = archive_harbor_trial(trial, tmp_path / "trails", task_id="task", task_revision="sha")
     assert (trail / "review.md").is_file()
     assert not (trail / "agent" / "opencode" / "xdg-data" / "opencode" / "opencode.db").exists()
     assert not (trail / "agent" / "opencode" / "xdg-data").exists()
     assert not (trail / "agent" / "opencode.txt").exists()
+    assert not (trail / "agent" / "codex.txt").exists()
+    assert not (trail / "agent" / "sessions").exists()
     # Text logs at the agent root are still archived.
     assert (trail / "agent" / "agent-summary.txt").is_file()
 

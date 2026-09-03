@@ -70,11 +70,11 @@ hf auth whoami                    # must be signed in (trail upload target)
 From a checkout, `uv run pre-harbor doctor` reports the same thing and names
 what has to move to a Linux box.
 
-You also need a provider endpoint (an OpenAI-compatible API) and its
-credential exported in the shell environment, e.g.:
+For the reference Codex condition, use the existing ChatGPT OAuth login on the
+Linux host:
 
 ```bash
-export OPENAI_API_KEY=...         # the credential
+codex login status                # must report ChatGPT login
 ```
 
 ## Getting the exam revision
@@ -102,15 +102,15 @@ uv run pre-harbor publish --repo Jack-Jieke-Wu/Paper-Reviewing-Exam --execute
 ## Running one agent condition
 
 ```bash
-# 1) Pick one immutable Exam revision and export the credential:
+# 1) Pick one immutable Exam revision and use the existing ChatGPT OAuth login:
 EXAM_SHA=<40-character-exam-sha>
-export OPENAI_API_KEY=...
 
 # 2) Run Harbor directly with your agent on the pinned snapshot:
 harbor run \
   --repo https://huggingface.co/datasets/Jack-Jieke-Wu/Paper-Reviewing-Exam/tree/$EXAM_SHA/paper-review-exam \
-  --agent <agent-id> \
-  --model openai/gpt-5.6-sol \
+  --agent codex \
+  --model gpt-5.6-terra \
+  --ak reasoning_effort=medium \
   --jobs-dir jobs/<agent> \
   --job-name my-agent-run-1 \
   --n-concurrent 1 --n-concurrent-agents 1 \
@@ -122,6 +122,10 @@ harbor run \
   --include-task-name transport_in_one_channel_luttinger_liquid \
   --include-task-name trapping_centers_superfluid_mott_insulator \
   --artifact /workspace/material-manifest.json \
+  --agent-env CODEX_FORCE_AUTH_JSON=true \
+  --allow-agent-host chatgpt.com \
+  --allow-agent-host auth.openai.com \
+  --allow-agent-host api.openai.com \
   --allow-agent-host arxiv.org \
   --allow-agent-host api.semanticscholar.org \
   --allow-environment-host arxiv.org \
@@ -143,8 +147,9 @@ The example allowlist is the minimum for the scholarly hosts the exam suggests
 
 - The allowlist flags matter at **environment start**, not only during the
   agent phase: Harbor installs hosted agents at run time, so the install itself
-  needs network and the provider host must be allowed. Add your provider host
-  the same way if it is not already in the launch environment.
+  needs network and the provider host must be allowed. Codex also needs both
+  `github.com` and `*.github.com` during its nvm bootstrap. Add each provider
+  endpoint at both phases if it is not already in the launch environment.
 - `--network scholarly` in `pre-harbor verify` (or the equivalent manual
   allowlist) opens the general scholarly sources **plus** the Bohrium `bohr`
   CLI platform hosts and Google Scholar (`scholar.google.com`) — see the

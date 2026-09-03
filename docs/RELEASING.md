@@ -23,8 +23,8 @@ agent. Nothing here scores review quality; that remains the human experts' job.
 
 ## Running it
 
-From a Docker-capable Linux host, with the provider credential exported from
-your own credential store (never from a file committed to this repository):
+From a Docker-capable Linux host, where `codex login status` reports the
+existing ChatGPT OAuth login (never copy its auth file or provide an API key):
 
 ```bash
 EXAM_SHA=afc83f1c0e579852de9b2a075b259d7795cd09f0   # the snapshot under test
@@ -32,20 +32,21 @@ TASK=compression_induced_folding_of_a_sheet
 
 harbor run \
   --repo "https://huggingface.co/datasets/Jack-Jieke-Wu/Paper-Reviewing-Exam/tree/$EXAM_SHA/paper-review-exam" \
-  --agent codex --model openai/gpt-5.6-terra \
+  --agent codex --model gpt-5.6-terra --ak reasoning_effort=medium \
   --jobs-dir jobs/smoke --job-name "$VERSION-smoke" \
   --n-concurrent 1 --n-concurrent-agents 1 \
   --no-delete --yes \
   --include-task-name "$TASK" \
   --artifact /workspace/material-manifest.json \
-  --agent-env 'OPENAI_API_KEY=${OPENAI_API_KEY}' \
-  --agent-env 'OPENAI_BASE_URL=${OPENAI_BASE_URL}' \
+  --agent-env CODEX_FORCE_AUTH_JSON=true \
   --allow-agent-host <each host> --allow-environment-host <each host>
 ```
 
-The allowlist is the `agent` preset plus your provider host, applied at **both**
-phases — Harbor installs hosted agents at run time, so the install itself needs
-network. See the Network section of [`BENCHMARK.md`](BENCHMARK.md).
+The allowlist is the `agent` preset plus the Codex OAuth provider endpoints,
+applied at **both** phases. The preset must include both `github.com` and
+`*.github.com`: Codex's nvm installer uses Git smart HTTP and Harbor's egress
+sidecar requires the wildcard entry for that clone. See the Network section of
+[`BENCHMARK.md`](BENCHMARK.md).
 
 Then archive the trail (locally is enough for a smoke test — drop `--execute`,
 since a gate run is not a benchmark result and does not belong in the public
