@@ -86,6 +86,7 @@ AGENT_INSTALL_HOSTS: tuple[str, ...] = (
     "security.ubuntu.com",
     "deb.debian.org",
     "github.com",
+    "*.github.com",
     "raw.githubusercontent.com",
     "objects.githubusercontent.com",
     "nodejs.org",

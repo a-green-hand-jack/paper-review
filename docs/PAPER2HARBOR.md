@@ -169,18 +169,18 @@ quality, and is not a model of one.
 hand-writing it is a mistake:
 
 ```bash
+export CODEX_FORCE_AUTH_JSON=true
 pre-harbor verify <label> \
-  --agent codex --model openai/gpt-5.6-sol \
-  --network scholarly --api-host api.apexin.ai \
-  --agent-env OPENAI_API_KEY --agent-env OPENAI_BASE_URL
+  --agent codex --model gpt-5.6-terra \
+  --network scholarly \
+  --api-host chatgpt.com --api-host auth.openai.com --api-host api.openai.com \
+  --agent-env CODEX_FORCE_AUTH_JSON
 ```
 
-`--agent-env` takes variable *names*. `pre-harbor` passes Harbor v0.20.0 the
-literal template `NAME=${NAME}`; Harbor resolves it from its own environment.
-The printed command uses `'NAME=${NAME}'`, so a shell does not expand a secret
-before Harbor receives the template. Export the required credentials from the
-host's protected credential store before running the command; never place them
-in this repository, a task, or shell history.
+`--agent-env` takes variable *names*. `CODEX_FORCE_AUTH_JSON=true` tells the
+Harbor Codex adapter to use the existing host ChatGPT OAuth login; it does not
+place credentials in the repository, task, or shell history. The printed
+command uses `NAME=${NAME}`, so Harbor rather than the shell resolves the value.
 
 Off this machine, the same command prints what to run on the box and exits
 non-zero rather than pretending. Measured on `erdos973--v1`: codex produced a
@@ -290,7 +290,9 @@ but `oracle` and `nop` rather than letting a container build discover it.
 **Those hosts are needed at environment start, not only during the agent
 phase.** Every entry goes to `--allow-environment-host` as well as
 `--allow-agent-host`; with only the latter the install still fails. `_host_args`
-does both.
+does both. For Codex, the agent preset contains both `github.com` and
+`*.github.com`: nvm's Git smart-HTTP clone fails through Harbor's strict egress
+sidecar without the wildcard entry.
 
 **Most real agents also need `-m`.** Without it the codex adapter raises
 `Model name is required` after a successful install.

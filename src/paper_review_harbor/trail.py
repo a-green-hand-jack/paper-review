@@ -252,8 +252,10 @@ def archive_harbor_trial(
                 source,
                 target / destination_name,
                 trial_dir,
-                skip_dirs=("xdg-data", "xdg-state"),
-                skip_files=("opencode.txt",),
+                # Runtime state and raw stdout may contain credentials or opaque
+                # provider payloads. Harbor writes normalized trajectories separately.
+                skip_dirs=("xdg-data", "xdg-state", "sessions"),
+                skip_files=("opencode.txt", "codex.txt"),
             )
 
     manifest = {

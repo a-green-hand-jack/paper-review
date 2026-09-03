@@ -476,7 +476,10 @@ def verify(
     agent: Annotated[str, typer.Option(help="harbor agent: oracle, nop, codex, ...")] = "oracle",
     network: Annotated[str, typer.Option(help="none | agent | scholarly")] = "none",
     model: Annotated[str, typer.Option(help="required by most real agents")] = "",
-    api_host: Annotated[str, typer.Option(help="the agent's own provider host")] = "",
+    api_host: Annotated[
+        list[str] | None,
+        typer.Option(help="the agent's own provider host; repeat for multiple OAuth endpoints"),
+    ] = None,
     agent_env: Annotated[
         list[str] | None,
         typer.Option(help="env var name to pass to the agent, e.g. OPENAI_API_KEY"),
@@ -495,8 +498,7 @@ def verify(
         raise typer.Exit(2)
 
     hosts = NETWORK_MODES[network]
-    if api_host:
-        hosts = hosts + (api_host,)
+    hosts = hosts + tuple(api_host or ())
     if network == "none" and agent not in {"oracle", "nop"}:
         _err(
             f"agent {agent!r} with --network none will fail during setup: Harbor installs "

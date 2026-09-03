@@ -12,7 +12,13 @@ import pytest
 
 from paper_review_harbor.audit import audit_task
 from paper_review_harbor.corpus import discover_paper
-from paper_review_harbor.emit import EmitConfig, canary_for, emit_task, toml_escape
+from paper_review_harbor.emit import (
+    AGENT_INSTALL_HOSTS,
+    EmitConfig,
+    canary_for,
+    emit_task,
+    toml_escape,
+)
 from paper_review_harbor.ingest import ingest
 from paper_review_harbor.spec import TaskSpec
 
@@ -71,6 +77,10 @@ def emitted(staged, tmp_path: Path):
     return version, task_dir
 
 class TestEmit:
+    def test_agent_install_hosts_cover_github_subdomains(self) -> None:
+        assert "github.com" in AGENT_INSTALL_HOSTS
+        assert "*.github.com" in AGENT_INSTALL_HOSTS
+
     def test_writes_the_harbor_layout(self, emitted) -> None:
         _, task_dir = emitted
         for relative in (
