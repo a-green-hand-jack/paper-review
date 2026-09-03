@@ -1,0 +1,59 @@
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+
+\title{A Minimal Manuscript for Exercising the Paper Review Contract}
+\author{Paper Review Bench Maintainers}
+\date{}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+This short synthetic manuscript is a complete, self-contained input for an
+end-to-end paper-review smoke test. It states one elementary claim, gives its
+derivation, and reports a small consistency check. The scientific content is
+deliberately modest: the task is to review the manuscript as submitted, not to
+infer an unstated result or search for outside literature.
+\end{abstract}
+
+\section{Claim}\label{sec:claim}
+For every real number $x$, the quantity $(x-1)^2$ is non-negative. Equivalently,
+\begin{equation}\label{eq:bound}
+x^2 + 1 \geq 2x.
+\end{equation}
+We use this identity as a small example of a claim whose statement, argument,
+and stated limitations can all be inspected directly in the supplied source.
+
+\section{Derivation}\label{sec:derivation}
+Expanding the square gives
+\[
+(x-1)^2 = x^2 - 2x + 1.
+\]
+A square of a real number is non-negative, so rearranging the displayed
+identity proves Equation~\ref{eq:bound}. No additional assumptions are used.
+
+\section{Consistency Check}\label{sec:check}
+Table~\ref{tab:values} evaluates both sides for three representative inputs.
+The values are consistent with the claimed inequality.
+
+\begin{table}[h]
+\centering
+\begin{tabular}{c|c|c}
+$x$ & $x^2 + 1$ & $2x$ \\
+\hline
+0 & 1 & 0 \\
+1 & 2 & 2 \\
+2 & 5 & 4 \\
+\end{tabular}
+\caption{A direct finite check of Equation~\ref{eq:bound}.}
+\label{tab:values}
+\end{table}
+
+\section{Scope}\label{sec:scope}
+This manuscript establishes only the elementary inequality in
+Equation~\ref{eq:bound}. It makes no novelty claim, empirical generalization,
+or claim about a production system. A useful review can therefore assess
+whether the claim is stated precisely, the derivation is valid, the check is
+appropriately interpreted, and the scope is communicated clearly.
+
+\end{document}

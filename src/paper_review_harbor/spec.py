@@ -47,6 +47,12 @@ class TaskSpec(BaseModel):
     collection_workflow: str = "paper-review-harbor"
     build_workflow: str = "paper-review-harbor"
     related_writing_task_ids: list[str] = Field(default_factory=list)
+    #: Optional task-specific bound for a deliberately small smoke task.
+    #:
+    #: Most review tasks inherit the hour-long default from ``EmitConfig``.
+    #: A source-backed smoke manuscript can opt into a shorter bound without
+    #: taking a separate task-emission path.
+    agent_timeout_sec: float | None = Field(default=None, gt=0)
     notes: str = Field(
         default="",
         description="Free text shown to the review agent. The operator's brief.",

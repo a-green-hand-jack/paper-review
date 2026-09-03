@@ -35,6 +35,28 @@ def test_verify_passes_a_harbor_environment_template_without_exposing_a_value(
     assert "--agent-env 'TEST_HARBOR_API_KEY=${TEST_HARBOR_API_KEY}'" in result.output
 
 
+def test_verify_sets_codex_nvm_install_to_script_mode(tmp_path: Path, monkeypatch) -> None:
+    label = "example"
+    tasks = tmp_path / "tasks"
+    _task(tasks, label)
+    received: list[list[str]] = []
+
+    monkeypatch.setattr(cli.shutil, "which", lambda _: "/usr/bin/available")
+    monkeypatch.setattr(cli.subprocess, "call", lambda command: received.append(command) or 0)
+
+    result = CliRunner().invoke(
+        cli.app,
+        ["verify", label, "--tasks", str(tasks), "--agent", "codex", "--network", "agent"],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert any(
+        received[0][index : index + 2] == ["--agent-env", "METHOD=script"]
+        for index in range(len(received[0]) - 1)
+    )
+    assert "--agent-env METHOD=script" in result.output
+
+
 def test_verify_leaves_missing_agent_environment_resolution_to_harbor(
     tmp_path: Path, monkeypatch
 ) -> None:

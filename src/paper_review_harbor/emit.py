@@ -187,6 +187,11 @@ def emit_task(result: IngestResult, spec: TaskSpec, config: EmitConfig) -> Path:
     task_dir.mkdir(parents=True)
 
     title = spec.title or result.paper_map.title
+    agent_timeout_sec = (
+        spec.agent_timeout_sec
+        if spec.agent_timeout_sec is not None
+        else config.agent_timeout_sec
+    )
     env = _env()
     common = {
         "canary": canary,
@@ -213,7 +218,7 @@ def emit_task(result: IngestResult, spec: TaskSpec, config: EmitConfig) -> Path:
             tex_lines=result.paper_map.total_tex_lines,
             n_sections=len(result.paper_map.sections),
             n_citations=len(result.paper_map.cited_keys),
-            agent_timeout_sec=config.agent_timeout_sec,
+            agent_timeout_sec=agent_timeout_sec,
             verifier_timeout_sec=config.verifier_timeout_sec,
             build_timeout_sec=config.build_timeout_sec,
             cpus=config.cpus,

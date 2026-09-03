@@ -290,9 +290,10 @@ but `oracle` and `nop` rather than letting a container build discover it.
 **Those hosts are needed at environment start, not only during the agent
 phase.** Every entry goes to `--allow-environment-host` as well as
 `--allow-agent-host`; with only the latter the install still fails. `_host_args`
-does both. For Codex, the agent preset contains both `github.com` and
-`*.github.com`: nvm's Git smart-HTTP clone fails through Harbor's strict egress
-sidecar without the wildcard entry.
+does both. For Codex, `pre-harbor verify` supplies `METHOD=script` to the NVM
+installer, which fetches its bootstrap from `raw.githubusercontent.com` rather
+than depending on its Git shallow-clone path. The agent preset keeps both
+`github.com` and `*.github.com` for the full installation endpoint set.
 
 **Most real agents also need `-m`.** Without it the codex adapter raises
 `Model name is required` after a successful install.

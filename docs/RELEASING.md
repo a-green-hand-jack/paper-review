@@ -10,13 +10,27 @@ a trial layout that moved between Harbor versions.
 So every release runs one real task, with a real agent, against the published
 snapshot, before it is announced.
 
+## Fast feedback while iterating
+
+For a fast check of a candidate task snapshot, run the synthetic
+`hello_world_review` task with the normal Codex condition. It exercises the
+same emitted Harbor layout, agent installation and provider connectivity,
+submission paths, verifier, and local trail archive as a normal task, but has
+a five-minute agent timeout and a very small manuscript. See
+[`BENCHMARK.md`](BENCHMARK.md#fast-smoke-task) for the selector and its
+boundaries.
+
+This is a development smoke test, not a release claim: do not publish its
+trail to the public Trails dataset, do not use it to compare agents, and do
+not let it replace the real-task gate below.
+
 ## The gate
 
 **Before tagging a release or publishing a new `Paper-Reviewing-Exam` snapshot,
 run one benchmark task end to end with `codex` on `gpt-5.6-terra` and confirm it
 reaches reward `1.0`.**
 
-One task is enough. This is a smoke test of the contract — task fetch, LFS
+One real canonical task is enough. This is a smoke test of the contract — task fetch, LFS
 hydration, environment build, agent install, provider reachability, the
 submission path, the verifier, and trail archiving — not a measurement of the
 agent. Nothing here scores review quality; that remains the human experts' job.
@@ -39,14 +53,16 @@ harbor run \
   --include-task-name "$TASK" \
   --artifact /workspace/material-manifest.json \
   --agent-env CODEX_FORCE_AUTH_JSON=true \
+  --agent-env METHOD=script \
   --allow-agent-host <each host> --allow-environment-host <each host>
 ```
 
 The allowlist is the `agent` preset plus the Codex OAuth provider endpoints,
-applied at **both** phases. The preset must include both `github.com` and
-`*.github.com`: Codex's nvm installer uses Git smart HTTP and Harbor's egress
-sidecar requires the wildcard entry for that clone. See the Network section of
-[`BENCHMARK.md`](BENCHMARK.md).
+applied at **both** phases. The preset keeps both `github.com` and
+`*.github.com`, while `METHOD=script` makes the NVM installer bootstrap from
+the already-allowlisted raw GitHub host instead of its Git shallow-clone path.
+`pre-harbor verify --agent codex` adds this setting automatically. See the
+Network section of [`BENCHMARK.md`](BENCHMARK.md).
 
 Then archive the trail (locally is enough for a smoke test — drop `--execute`,
 since a gate run is not a benchmark result and does not belong in the public

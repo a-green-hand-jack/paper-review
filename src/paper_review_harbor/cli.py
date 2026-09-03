@@ -520,6 +520,11 @@ def verify(
             raise typer.Exit(2)
         command += ["--agent-env", f"{name}=${{{name}}}"]
         printable_command += ["--agent-env", f"{name}=${{{name}}}"]
+    if agent == "codex":
+        # Harbor's Codex adapter calls the NVM installer in a non-interactive
+        # container. Script mode avoids its Git shallow-clone path.
+        command += ["--agent-env", "METHOD=script"]
+        printable_command += ["--agent-env", "METHOD=script"]
     command += _host_args(hosts)
     printable_command += _host_args(hosts)
     printable = shlex.join(printable_command)
