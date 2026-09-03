@@ -32,6 +32,7 @@ from jinja2 import Environment, FileSystemLoader, StrictUndefined
 
 from .ingest import IngestResult
 from .integrity import material_manifest
+from .manifest import source_record_id_for
 from .spec import TaskSpec
 
 TEMPLATES = Path(__file__).parent / "templates"
@@ -176,6 +177,7 @@ def _write(path: Path, text: str, *, executable: bool = False) -> None:
 def emit_task(result: IngestResult, spec: TaskSpec, config: EmitConfig) -> Path:
     """Render one Harbor task from a staged paper version."""
     task_id = result.label
+    source_record_id = source_record_id_for(task_id, result.source_sha256)
     canary = canary_for(task_id)
     task_dir = config.tasks_root / config.dataset / task_id
 
@@ -192,6 +194,7 @@ def emit_task(result: IngestResult, spec: TaskSpec, config: EmitConfig) -> Path:
         "venue": spec.venue,
         "domain": spec.domain,
         "paper_kind": spec.paper_kind,
+        "source_record_id": source_record_id,
         "notes": spec.notes.strip(),
         "main_tex": result.main_tex,
         "pdf": result.manuscript_pdf,
@@ -225,6 +228,7 @@ def emit_task(result: IngestResult, spec: TaskSpec, config: EmitConfig) -> Path:
     )
     shutil.copytree(result.root, task_dir / "environment" / "paper")
     source = {
+        "record_id": source_record_id,
         "kind": result.source_kind,
         "path": Path(result.source_path).name,
         "sha256": result.source_sha256,
@@ -263,12 +267,15 @@ def emit_task(result: IngestResult, spec: TaskSpec, config: EmitConfig) -> Path:
         executable=True,
     )
     shutil.copy2(TEMPLATES / "check_submission.py", task_dir / "tests" / "check_submission.py")
+    shutil.copy2(TEMPLATES.parent / "review.py", task_dir / "tests" / "review_contract.py")
     _write(
         task_dir / "tests" / "contract.json",
         json.dumps(
             {
                 "task_id": task_id,
                 "review_path": "review.md",
+                "review_json_path": "review.json",
+                "review_schema_version": 1,
                 "min_review_chars": config.min_review_chars,
             },
             indent=2,

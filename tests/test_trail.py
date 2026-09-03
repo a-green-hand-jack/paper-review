@@ -53,17 +53,24 @@ def test_archive_harbor_trial_keeps_required_provenance_and_brain(tmp_path) -> N
     review = trial / "artifacts" / "workspace" / "submission" / "review.md"
     review.parent.mkdir(parents=True)
     review.write_text("review")
+    (review.parent / "review.json").write_text("{}")
     (trial / "artifacts" / "workspace" / ".brain" / "review").mkdir(parents=True)
     (trial / "artifacts" / "workspace" / ".brain" / "review" / "final_review.md").write_text(
         "full review"
     )
-    (trial / "artifacts" / "workspace" / "material-manifest.json").write_text("{}")
+    (trial / "artifacts" / "workspace" / "material-manifest.json").write_text(
+        '{"source": {"record_id": "prb-task-0123456789abcdef"}}'
+    )
     (trial / "artifacts" / "manifest.json").write_text("{}")
     (trial / "config.json").write_text("{}")
     (trial / "lock.json").write_text("{}")
     trail = archive_harbor_trial(trial, tmp_path / "trails", task_id="task", task_revision="sha")
     assert (trail / "input" / "material-manifest.json").is_file()
+    assert (trail / "review.json").is_file()
     assert (trail / "brain" / "review" / "final_review.md").is_file()
+    manifest = json.loads((trail / "trail-manifest.json").read_text())
+    assert manifest["source_record_id"] == "prb-task-0123456789abcdef"
+    assert manifest["complete_structured_review"]
 
 
 def test_archive_harbor_trial_rejects_secret_metadata(tmp_path) -> None:

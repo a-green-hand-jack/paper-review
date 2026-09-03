@@ -3,7 +3,8 @@
 This benchmark is **agent-agnostic**: it owns the task contract, the publishable
 task snapshot, and the trail archive, but it does not maintain or run any
 specific paper-review agent. A paper-review agent supports this benchmark by
-running inside Harbor and writing `/workspace/submission/review.md`; the agent
+running inside Harbor and writing `/workspace/submission/review.md` and
+`/workspace/submission/review.json`; the agent
 itself is whatever Harbor agent id you pass to `--agent`
 (`codex`, `opencode`, `paper-run`, a custom Python agent class, ...).
 
@@ -27,11 +28,11 @@ trapping_centers_superfluid_mott_insulator
 
 Select them with `harbor run --include-task-name <task>` against the pinned
 Exam snapshot. The task `instruction.md` asks the agent to read the manuscript
-and write `review.md`; the verifier checks only that a substantive review was
-submitted.
+and write both review files; the verifier checks a substantive Markdown review
+and a valid structured JSON companion.
 
 Harbor reward in the trail manifests confirms only the submission contract (a
-`review.md` was written and is substantive). It is not a review-quality score
+substantive `review.md` and valid `review.json`). It is not a review-quality score
 and never becomes one — deciding quality is the job of the human experts who
 read the trails.
 
@@ -44,7 +45,7 @@ provider credential — not the `papers/` corpus and not the build pipeline.
 
 | You want to | You need |
 |---|---|
-| Run the six tasks with your agent | Harbor + the exam revision SHA below |
+| Run the six tasks with your agent | Harbor + an immutable Exam revision SHA |
 | Archive and upload the resulting trails | the above, plus `pre-harbor archive-trail` ([one command, no clone](#archiving-a-trail-without-a-checkout)) |
 | Add papers, change the task template, publish a new snapshot | a full checkout of this repository |
 
@@ -53,8 +54,8 @@ The third row is maintainer work. Everything else runs from a bare directory.
 **Three separate things carry `vN.N.N` tags, and the numbers collide.** The
 GitHub repository tags the *code*; the `Paper-Reviewing-Exam` dataset tags the
 *task snapshot*; the `Paper-Reviewing-Exam-Trails` dataset tags the *archived
-runs*. They advance independently — a `v0.2.0` in one is unrelated to a `v0.2.0`
-in another. Below, every tag is named with the thing it belongs to.
+runs*. The Source Archive releases independently too. Matching version numbers
+are coincidence, not provenance.
 
 ## Prerequisites
 
@@ -83,16 +84,8 @@ of the task snapshot you want to benchmark — **not** a branch name, because
 `main` moves and a trail that cites it no longer identifies the bytes its review
 was written from.
 
-The current published snapshot (31 tasks, including all six benchmark tasks)
-carries the **Exam dataset's** `v0.2.0` tag — a Hugging Face tag on
-`Jack-Jieke-Wu/Paper-Reviewing-Exam`, unrelated to the GitHub code tag of the
-same name:
-
-```text
-afc83f1c0e579852de9b2a075b259d7795cd09f0
-```
-
-Read the SHA behind any tag yourself rather than trusting a copy of it here:
+Resolve the SHA behind the intended release instead of trusting a copied
+version label or a stale document:
 
 ```bash
 hf repos tag list Jack-Jieke-Wu/Paper-Reviewing-Exam --repo-type dataset
@@ -109,8 +102,8 @@ uv run pre-harbor publish --repo Jack-Jieke-Wu/Paper-Reviewing-Exam --execute
 ## Running one agent condition
 
 ```bash
-# 1) Pick the exam revision (above) and export the credential:
-EXAM_SHA=afc83f1c0e579852de9b2a075b259d7795cd09f0
+# 1) Pick one immutable Exam revision and export the credential:
+EXAM_SHA=<40-character-exam-sha>
 export OPENAI_API_KEY=...
 
 # 2) Run Harbor directly with your agent on the pinned snapshot:
@@ -161,9 +154,9 @@ The example allowlist is the minimum for the scholarly hosts the exam suggests
 The `--artifact` flags preserve evidence the agent produced: at minimum list
 `/workspace/material-manifest.json`, which pins the exact task input bytes.
 Harbor downloads each listed path into the trial dir only when listed; without
-them the archived trail is missing that evidence. The submitted review itself
-is archived automatically from the Harbor 0.20 trial layout
-(`artifacts/workspace/submission/review.md`), along with the preserved
+them the archived trail is missing that evidence. The submitted review files
+are archived automatically from the Harbor 0.20 trial layout
+(`artifacts/workspace/submission/review.md` and `review.json`), along with the preserved
 lock/config, agent logs, and verifier output.
 
 Three rules for this workflow:
@@ -217,11 +210,12 @@ standard library and belongs with the tasks it archives. Tracked in
 
 ## What gets archived in each trail
 
-`archive_harbor_trial` writes `trail-manifest.json` (schema `2`) recording:
+`archive_harbor_trial` writes `trail-manifest.json` (schema `3`) recording:
 
 ```text
-task_id, task_revision (the exam SHA), run_id, archived_at,
-source_layout, archiver, complete_review, digest_scope, tree_sha256, files,
+task_id, task_revision (the exam SHA), source_record_id, run_id, archived_at,
+source_layout, archiver, complete_review, complete_structured_review,
+digest_scope, tree_sha256, files,
 metadata (agent-provided fields, scrubbed)
 ```
 
@@ -252,7 +246,7 @@ but never its path, which would name the contributor's machine.
 Trails archived before `v0.3.0` have no `archiver` block; read a missing one as
 unknown, not as an error.
 
-The archived trail copies the review, `config.json`/`lock.json`, the material
+The archived trail copies both review files, `config.json`/`lock.json`, the material
 manifest, agent artifacts, agent logs, and verifier output — scrubbed of
 host-local paths, secret-looking values, and non-evidence runtime state
 (`xdg-data`/`xdg-state`, sqlite/git binaries, the opencode raw stdout tee). The
@@ -270,9 +264,9 @@ HF destination is `harbor-trails/<task-id>/<timestamp>/`.
 
 - Read each trial's `trail-manifest.json` and the archived verifier output for
   the per-task reward/exception.
-- Reward `1.0` means a substantive `review.md` was submitted. A `1.0` with a
-  three-line or templated review is still a `1.0` — reward is a triage signal,
-  not quality.
+- Reward `1.0` means a substantive `review.md` and schema-valid `review.json`
+  were submitted. A templated review can still receive `1.0`; reward is a
+  triage signal, not quality.
 - `exception` non-empty means the trial did not complete normally; read the
   archived `exception.txt`/`trial.log` in the trail before judging the agent.
 

@@ -20,6 +20,24 @@ from paper_review_harbor.spec import TaskSpec
 def spec_for(label: str) -> TaskSpec:
     return TaskSpec(label=label, venue="arxiv", domain="mathematics")
 
+
+def write_structured_review(submission: Path) -> None:
+    (submission / "review.json").write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "summary": "A structured review used to test the submission contract.",
+                "strengths": ["The submission has a clear claim."],
+                "findings": [],
+                "questions": ["What evidence supports the central claim?"],
+                "recommendation": {"decision": "borderline", "confidence": "medium"},
+                "scores": {"soundness": 3, "novelty": 3, "clarity": 3, "significance": 3},
+            }
+        ),
+        encoding="utf-8",
+    )
+
+
 def run_checker(task_dir: Path, submission: Path, out: Path) -> dict:
     result = subprocess.run(
         [
@@ -66,6 +84,7 @@ class TestEmit:
             "tests/Dockerfile",
             "tests/test.sh",
             "tests/check_submission.py",
+            "tests/review_contract.py",
             "tests/contract.json",
         ):
             assert (task_dir / relative).is_file(), relative
@@ -380,6 +399,7 @@ class TestChecker:
         submission = tmp_path / "sub"
         submission.mkdir()
         (submission / "review.md").write_text("x" * 500, encoding="utf-8")
+        write_structured_review(submission)
         reward = run_checker(task_dir, submission, tmp_path / "out")
         assert reward["reward"] == 1.0
         assert reward["submitted"] == 1.0
@@ -409,12 +429,25 @@ class TestChecker:
         submission = tmp_path / "sub"
         submission.mkdir()
         (submission / "review.md").write_text("x" * 500, encoding="utf-8")
+        write_structured_review(submission)
         (submission / "findings.json").write_text("[]", encoding="utf-8")
         out = tmp_path / "out"
         reward = run_checker(task_dir, submission, out)
         assert reward["reward"] == 1.0
         report = json.loads((out / "submission_report.json").read_text(encoding="utf-8"))
         assert report["extra_submission_files"] == ["findings.json"]
+
+    def test_invalid_structured_review_scores_zero(self, emitted, tmp_path: Path) -> None:
+        _, task_dir = emitted
+        submission = tmp_path / "sub"
+        submission.mkdir()
+        (submission / "review.md").write_text("x" * 500, encoding="utf-8")
+        (submission / "review.json").write_text("{}", encoding="utf-8")
+        out = tmp_path / "out"
+        reward = run_checker(task_dir, submission, out)
+        report = json.loads((out / "submission_report.json").read_text(encoding="utf-8"))
+        assert reward["reward"] == 0.0
+        assert report["status"].startswith("invalid_structured")
 
 class TestRealCorpus:
     def test_every_emitted_manifest_parses(self, real_papers: Path, tmp_path: Path) -> None:

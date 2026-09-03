@@ -24,4 +24,16 @@ what the reviewer was unable to verify -- each tied to a location in the source
 at /workspace/paper/.
 REVIEW
 
-echo "Wrote $SUBMISSION/review.md"
+cat > "$SUBMISSION/review.json" <<'REVIEW_JSON'
+{
+  "schema_version": 1,
+  "summary": "Placeholder oracle output used only to test the submission path.",
+  "strengths": ["It exercises the structured review contract."],
+  "findings": [],
+  "questions": ["A real reviewer must inspect the manuscript before answering."],
+  "recommendation": {"decision": "not_given", "confidence": "low"},
+  "scores": {"soundness": null, "novelty": null, "clarity": null, "significance": null}
+}
+REVIEW_JSON
+
+echo "Wrote $SUBMISSION/review.md and $SUBMISSION/review.json"

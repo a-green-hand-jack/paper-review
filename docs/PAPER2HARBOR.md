@@ -2,17 +2,17 @@
 
 Turn a paper into a standard [Harbor](https://www.harborframework.com/docs/tasks)
 task for **collecting** peer reviews: the manuscript is already written, a
-review agent reads it and writes `review.md`, and the pair is archived for
+review agent reads it and writes `review.md` plus `review.json`, and the pair is archived for
 human experts to assess later.
 
 - **Input** — a paper's TeX source (directory, `.tar.gz`, `.zip`, or a bare
   `.tex`) plus an optional brief.
 - **Output** — a Harbor task (`schema_version = "1.4"`) that `harbor run`
   executes directly.
-- **The task does not judge reviews.** The verifier checks only that one was
-  submitted. Assessing quality is the human experts' job, on the collected
-  data — putting an LLM judge here would mean a model deciding what counts as a
-  good review, which is exactly the judgement the experts are for.
+- **The task does not judge reviews.** The verifier checks the Markdown and
+  structured JSON submission contract, not whether a finding is correct.
+  Assessing quality is the human experts' job, on a separate controlled
+  evaluation layer — never an LLM judge inside the task.
 
 Corpus today: **27 papers, 31 reviewable versions**, all published at
 [Paper-Reviewing-Exam](https://huggingface.co/datasets/Jack-Jieke-Wu/Paper-Reviewing-Exam).
@@ -31,8 +31,9 @@ products. `pre-harbor emit` recreates them from `papers/`, so use them when
 iterating on the task pipeline. Each generated task embeds only its sanitized
 manuscript material under `environment/paper`; `pre-harbor publish` uploads the
 generated task tree, not the complete local `papers/` corpus. The Hugging Face
-repository may separately carry an archival `papers/` tree, but that is outside
-the runnable `paper-review-exam/` task subtree.
+repository must not carry raw collection material. Build it separately with
+`pre-harbor build-source-archive` and publish it only to the restricted
+PaperBench Source Archive; see [`DATASETS.md`](DATASETS.md).
 
 Run Harbor only from a Docker-capable Linux checkout. First confirm the host,
 then build or run the intended task:
@@ -89,6 +90,12 @@ label: erdos973--v1
 venue: arxiv
 domain: mathematics          # otherwise "unknown"
 paper_kind: proof
+paper_url: https://arxiv.org/abs/1234.5678
+paper_arxiv_id: "1234.5678"
+paper_license: CC-BY-4.0
+source_access: restricted       # raw inputs never go into the runnable Exam
+related_writing_task_ids:       # optional links in the shared source registry
+  - lspr-0003
 notes: |                     # shown to the review agent verbatim
   Focus on whether the quantitative bound is established, not just the
   qualitative one.
@@ -96,6 +103,33 @@ notes: |                     # shown to the review agent verbatim
 
 `pre-harbor init-spec <label>` writes a starter. A paper with no spec still
 produces a working task.
+
+### Register original sources
+
+Before publishing a benchmark release, preserve original collection inputs and
+their registry records separately from the runnable task snapshot:
+
+```bash
+pre-harbor build-source-archive
+pre-harbor publish-source-archive --repo Jack-Jieke-Wu/PaperBench-Source-Archive
+```
+
+The second command is dry-run by default and creates/uploads only a private
+dataset when passed `--execute`. Inspect `source-records.jsonl` first. Its
+`source_record_id` binds source URL/DOI/license and workflow revisions to the
+derived review task and related writing tasks.
+
+After recording the Source Archive's immutable commit SHA, migrate any legacy
+raw `papers/` tree out of the public Exam snapshot with the separately guarded
+operation below. It is dry-run by default and never runs as part of task
+publishing:
+
+```bash
+pre-harbor retire-runtime-sources \
+  --exam-repo Jack-Jieke-Wu/Paper-Reviewing-Exam \
+  --source-archive-repo Jack-Jieke-Wu/PaperBench-Source-Archive \
+  --source-archive-revision <40-character-source-archive-sha>
+```
 
 ### Build the tasks
 
@@ -125,7 +159,7 @@ pre-harbor verify <label> --agent nop       # must score 0.0
 ```
 
 Both must hold. Until then the task is unproven, and emitting is never the same
-as verifying. The oracle writes a placeholder review, so a 1.0 proves the
+as verifying. The oracle writes a placeholder review and structured companion, so a 1.0 proves the
 submission path and the checker are wired up — it says nothing about review
 quality, and is not a model of one.
 
@@ -156,6 +190,7 @@ Collected per run, in the job's `artifacts/`:
 
 ```
 workspace/submission/review.md      the review
+workspace/submission/review.json    structured findings and recommendation
 logs/agent/trajectory.json          what the agent did
 logs/agent/sessions/...jsonl        the agent's own session record
 ```
@@ -202,7 +237,7 @@ harbor run --repo https://huggingface.co/datasets/Jack-Jieke-Wu/Paper-Reviewing-
 
 The benchmark is **agent-agnostic**: it provides the tasks and the trail
 archive, and a paper-review agent supports it by running inside Harbor and
-writing `/workspace/submission/review.md`. Run any Harbor agent against the
+writing `/workspace/submission/review.md` and `/workspace/submission/review.json`. Run any Harbor agent against the
 pinned Exam snapshot, then archive each trial with `pre-harbor archive-trail`:
 
 ```bash
@@ -352,7 +387,7 @@ keeps every key as a named metric and reports `reward` as the score.
 
 | key | meaning |
 |---|---|
-| `reward` | 1.0 when `review.md` exists with ≥200 characters of content, else 0.0 |
+| `reward` | 1.0 when `review.md` has ≥200 characters and `review.json` validates, else 0.0 |
 | `submitted` | 1.0 when anything was written at all |
 | `review_chars` / `_words` / `_lines` / `_headings` | shape of the review |
 | `mentions_location` | heuristic: does the review point at the manuscript, or only summarise it |

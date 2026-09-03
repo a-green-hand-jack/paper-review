@@ -135,12 +135,12 @@ tags:
 
 Harbor tasks for **collecting** peer reviews of scientific manuscripts. Each
 task hands an agent a complete paper and asks it to write a review; the review
-is archived for human experts to assess afterwards.
+and its structured companion are archived for human experts to assess afterwards.
 
 **These tasks do not score reviews.** The verifier checks only that
-`review.md` was written and is substantive. There is no rubric and no LLM
-judge, because deciding what counts as a good review is the judgement the human
-experts are for.
+`review.md` was written and is substantive and that `review.json` follows the
+published schema. There is no LLM judge: deciding whether findings are correct
+or useful remains the judgement of human experts.
 
 - **{len(plan.task_ids)} tasks** from {len(slugs)} papers
 - Fields: {fields}
@@ -169,26 +169,25 @@ open-book runs:
 task.** Record it alongside the review, or a later reader cannot tell whether
 an agent that checked no citations was unable to or merely did not.
 
-## Running the benchmark
+## Runs and expert assessment
 
-To run one reproducible model condition over the six-task Issue #19 set and
-archive every trail, use `pre-harbor benchmark` from the
-[`paper-review-bench`](https://github.com/a-green-hand-jack/paper-review-bench)
-repository (see its `docs/BENCHMARK.md`). Trails land in the
-[`Paper-Reviewing-Exam-Trails`](https://huggingface.co/datasets/Jack-Jieke-Wu/Paper-Reviewing-Exam-Trails)
-dataset.
+Run a pinned task snapshot with Harbor, then archive every completed trial into
+[`Paper-Reviewing-Exam-Trails`](https://huggingface.co/datasets/Jack-Jieke-Wu/Paper-Reviewing-Exam-Trails).
+The trail preserves both `review.md` and `review.json`, task revision, and the
+stable `source_record_id`. Human expert labels use a separate, access-controlled
+assessment asset; they never enter the task environment or task verifier.
 
 ## Layout
 
 ```
 {plan.dataset}/
-├── dataset-manifest.jsonl      one row per task: provenance and source hash
+├── dataset-manifest.jsonl      one row per task: provenance and source_record_id
 └── <task-id>/
     ├── task.toml
     ├── instruction.md
     ├── environment/            Dockerfile + the manuscript
     ├── solution/solve.sh       placeholder-review oracle
-    └── tests/                  submission-contract check
+    └── tests/                  markdown plus structured submission-contract check
 ```
 
 ## Contamination
@@ -203,16 +202,16 @@ Two paths remain open and are not fixable inside a task:
 1. **Multi-version papers are public on arXiv.** An agent reviewing v1 with
    `arxiv.org` reachable can fetch v2 and read what was fixed. Consider running
    version-set papers closed-book, or recording that the risk applies.
-2. **This repository also hosts the raw sources under `papers/`,** including the
-   writing-time trail for the `solution-*` manuscripts. `huggingface.co` is not
-   in the suggested allowlist, so a task run cannot reach it, but do not add it.
+2. **Raw collection inputs belong to the separate restricted source archive,**
+   not this runnable snapshot. Do not add an archive host to an agent allowlist.
 
 ## Provenance
 
 Built by [`pre-harbor`](https://github.com/a-green-hand-jack/paper-review-bench) from
-the LaTeX sources in `papers/`. `dataset-manifest.jsonl` records each task's
-source SHA-256, so a collected review can be traced to the exact bytes it was
-written from.
+registered original sources. `dataset-manifest.jsonl` records each task's
+source SHA-256 and `source_record_id`; the matching restricted PaperBench Source
+Archive holds raw collection inputs, source URLs/DOIs/licenses, workflow
+revisions, and links to related writing tasks.
 
 Benchmark canary GUIDs are embedded in every task. This data should not appear
 in training corpora.

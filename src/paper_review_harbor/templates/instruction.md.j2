@@ -17,13 +17,34 @@ Read it and write a peer review.
 {% endif %}
 ## What to produce
 
-Write your review to **`/workspace/submission/review.md`**. That is the only
-required output, and it must be a real review — at least {{ min_review_chars }}
-characters of substance.
+Write a human-readable review to **`/workspace/submission/review.md`**. It
+must be a real review — at least {{ min_review_chars }} characters of substance.
 
-Anything else you find useful is yours to decide: structured findings, a
-per-section pass, notes on what you could not check. Extra files in
-`/workspace/submission/` are archived with the review.
+Also write **`/workspace/submission/review.json`**. This is the required
+machine-readable companion, not a quality score. It must contain this schema:
+
+```json
+{
+  "schema_version": 1,
+  "summary": "what the paper claims and your overall assessment",
+  "strengths": ["supported strength"],
+  "findings": [{
+    "category": "correctness | novelty | clarity | reproducibility | related_work | presentation | other",
+    "severity": "critical | major | minor | suggestion",
+    "location": "section, page, theorem, figure, or source line",
+    "claim": "the issue or observation",
+    "evidence": "why the manuscript supports this assessment",
+    "confidence": "high | medium | low"
+  }],
+  "questions": ["what remains to be answered"],
+  "recommendation": {"decision": "accept | weak_accept | borderline | weak_reject | reject | not_given", "confidence": "high | medium | low"},
+  "scores": {"soundness": 1, "novelty": 1, "clarity": 1, "significance": 1}
+}
+```
+
+Use `null` for a score you cannot responsibly give. Findings may be empty, but
+every field in the JSON object is required. Extra files in `/workspace/submission/`
+are archived with the review.
 
 ## What the review should cover
 

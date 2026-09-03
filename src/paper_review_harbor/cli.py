@@ -19,6 +19,7 @@ from typing import Annotated
 
 import typer
 
+from .assessment import AssessmentContractError, load_assessment
 from .audit import audit_task
 from .corpus import CorpusError, PaperVersion, discover
 from .emit import (
@@ -32,6 +33,14 @@ from .ingest import ingest
 from .manifest import row_for, write_manifest
 from .provenance import archiver_provenance, provenance_warnings
 from .publish import PublishError, create_tag, plan_publish, read_manifest, render_readme, upload
+from .source_archive import (
+    SOURCE_ARCHIVE_NAME,
+    SourceArchiveError,
+    build_source_archive,
+    plan_source_archive_publish,
+    retire_runtime_sources,
+    upload_source_archive,
+)
 from .spec import SpecError, TaskSpec, load_spec, spec_path
 from .trail import TrailError, archive_harbor_trial, upload_trail
 
@@ -148,6 +157,98 @@ def init_spec(
     spec = TaskSpec.default_for(label)
     spec.save(path)
     _ok(f"wrote {path}")
+
+
+@app.command("build-source-archive")
+def build_source_archive_command(
+    only: Annotated[list[str] | None, typer.Argument(help="labels; default all")] = None,
+    papers: Annotated[Path, typer.Option()] = DEFAULT_PAPERS,
+    specs: Annotated[Path, typer.Option()] = DEFAULT_SPECS,
+    build: Annotated[Path, typer.Option()] = DEFAULT_BUILD,
+    archive: Annotated[
+        Path, typer.Option(help="restricted raw-source archive output")
+    ] = DEFAULT_BUILD / SOURCE_ARCHIVE_NAME,
+) -> None:
+    """Build the restricted source archive; it is never a runnable Harbor task tree."""
+    versions = _versions(papers, only)
+    spec_map = _specs(specs, versions)
+    try:
+        records = build_source_archive(
+            versions,
+            {label: spec for label, (spec, _) in spec_map.items()},
+            build=build,
+            destination=archive,
+        )
+    except SourceArchiveError as error:
+        _err(str(error))
+        raise typer.Exit(1) from error
+    _ok(f"{archive}: {len(records)} restricted source records")
+
+
+@app.command("publish-source-archive")
+def publish_source_archive_command(
+    repo: Annotated[str, typer.Option(help="private Hugging Face dataset, e.g. org/name")],
+    archive: Annotated[Path, typer.Option()] = DEFAULT_BUILD / SOURCE_ARCHIVE_NAME,
+    revision: Annotated[str, typer.Option(help="HF branch, tag, or commit to upload to")] = "main",
+    execute: Annotated[bool, typer.Option(help="actually create/upload; off by default")] = False,
+) -> None:
+    """Publish raw collection inputs only to a private source-archive dataset."""
+    try:
+        plan = plan_source_archive_publish(archive, repo, revision=revision)
+        commands = upload_source_archive(plan, execute=execute)
+    except SourceArchiveError as error:
+        _err(str(error))
+        raise typer.Exit(1) from error
+    if execute:
+        _ok(f"published restricted source archive to https://huggingface.co/datasets/{repo}")
+    else:
+        typer.echo(f"Dry run. The source archive must remain private:\n\n{commands}\n")
+
+
+@app.command("retire-runtime-sources")
+def retire_runtime_sources_command(
+    exam_repo: Annotated[str, typer.Option(help="Exam dataset that still contains papers/")],
+    source_archive_repo: Annotated[str, typer.Option(help="restricted Source Archive dataset")],
+    source_archive_revision: Annotated[
+        str, typer.Option(help="immutable 40-character Source Archive commit SHA")
+    ],
+    revision: Annotated[str, typer.Option(help="Exam branch to clean")] = "main",
+    execute: Annotated[
+        bool, typer.Option(help="actually delete papers/**; off by default")
+    ] = False,
+) -> None:
+    """Retire old raw inputs from Exam after the restricted archive is pinned."""
+    try:
+        command = retire_runtime_sources(
+            exam_repo,
+            source_archive_repo_id=source_archive_repo,
+            source_archive_revision=source_archive_revision,
+            revision=revision,
+            execute=execute,
+        )
+    except SourceArchiveError as error:
+        _err(str(error))
+        raise typer.Exit(1) from error
+    if execute:
+        _ok(f"retired papers/** from https://huggingface.co/datasets/{exam_repo}")
+    else:
+        typer.echo(f"Dry run. Verify the private Source Archive first:\n\n{command}\n")
+
+
+@app.command("validate-assessment")
+def validate_assessment(
+    path: Annotated[Path, typer.Argument(help="private expert assessment JSON")],
+) -> None:
+    """Validate a private human-expert label without placing it in task runtime."""
+    try:
+        record = load_assessment(path)
+    except AssessmentContractError as error:
+        _err(str(error))
+        raise typer.Exit(1) from error
+    _ok(
+        f"valid assessment {record['assessment_id']} for {record['task_id']} "
+        f"({record['source_record_id']})"
+    )
 
 
 # --------------------------------------------------------------------------
